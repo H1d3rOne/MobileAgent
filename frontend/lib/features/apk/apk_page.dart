@@ -6771,6 +6771,7 @@ class _FileEntry {
         default:
           await notifier.runAnalyzer('triage');
       }
+      await _loadReversePlan(apk);
     } catch (_) {}
   }
 
