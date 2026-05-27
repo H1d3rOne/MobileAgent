@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./configs:/app/configs
+      - ./data:/data
+    environment:
+      - ADB_HOST=host.docker.internal
+    restart: unless-stopped
+
+  frontend:
+    image: mobileagent/frontend:latest
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped

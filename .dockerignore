@@ -1,0 +1,14 @@
+__pycache__
+node_modules
+frontend/dist
+.git
+.env
+*.apk
+data/
+decompiled/
+workspace/
+.venv
+venv
+.env
+*.keystore
+.DS_Store

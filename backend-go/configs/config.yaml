@@ -1,0 +1,75 @@
+server:
+  host: "0.0.0.0"
+  port: 8320
+  cors_origins: []
+
+adb:
+  path: "../tools/bin/adb"
+  auto_connect: true
+  auto_connect_addrs: []
+  connect_timeout: 10
+  shell_timeout: 30
+  discover_interval: 30
+
+llm:
+  provider: "openai"
+  model: "gpt-4o"
+  api_key: ""
+  base_url: ""
+  api_type: "chat_completions"
+
+tools:
+  apktool: "../tools/bin/apktool"
+  jadx: "../tools/bin/jadx"
+  frida: "../tools/bin/frida"
+  radare2: "../tools/bin/r2"
+  androguard: "../tools/bin/androguard"
+  apksigner: "../tools/bin/apksigner"
+  zipalign: "../tools/bin/zipalign"
+  uber_apk_signer: "../tools/bin/uber-apk-signer"
+  bundletool: "../tools/bin/bundletool"
+  mitmproxy: "../tools/bin/mitmproxy"
+
+storage:
+  db_path: "./data/mobileagent.db"
+  upload_dir: "./data/uploads"
+  workspace_dir: "./data/workspace"
+  memory_dir: "./data/memory"
+  max_upload_size_mb: 500
+
+log:
+  level: "info"
+  format: "console"
+
+agent:
+  max_iterations: 40
+  history_max_messages: 40
+  memory_recall_top_k: 5
+  # Approval mode for dangerous tool calls: "deny" (block all), "approval" (ask user), "yolo" (allow all)
+  approval_mode: "approval"
+
+skills:
+  shell_timeout_seconds: 30
+  shell_max_output_bytes: 65536
+  # Empty list = unrestricted; set prefixes (e.g. ["adb ", "ls "]) to lock down.
+  shell_allow_prefixes: []
+
+# Command sandbox for /tools/run endpoint.
+# When enabled, only whitelisted binaries can be executed.
+sandbox:
+  enabled: true
+  # If empty, the built-in default whitelist is used:
+  # apktool, jadx, r2, androguard, androaxml, aapt, aapt2, adb, frida, objection,
+  # mitmdump, mitmproxy, mitmweb, dex2jar, d2j-dex2jar, jarsigner, apksigner,
+  # zipalign, keytool, file, strings, grep, find, ls, cat, head, tail, wc,
+  # sha256sum, md5sum, xxd, hexdump
+  allowed_commands: []
+
+# MCP servers are launched at startup; each tool is registered as
+# `mcp_<server>_<tool>` in the agent's tool list.
+mcp:
+  servers: {}
+  # Example:
+  #   filesystem:
+  #     command: ["npx", "-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+  #     env: {}

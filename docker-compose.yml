@@ -1,0 +1,18 @@
+services:
+  mobileagent:
+    build: .
+    container_name: mobileagent
+    ports:
+      - "8320:8320"
+      - "9999:9999"
+    volumes:
+      - mobileagent-data:/app/backend-go/data
+      # Optional: expose host Android devices over adb when supported by the host.
+      # - /dev/bus/usb:/dev/bus/usb
+    environment:
+      - TZ=Asia/Shanghai
+    privileged: true
+    restart: unless-stopped
+
+volumes:
+  mobileagent-data:
