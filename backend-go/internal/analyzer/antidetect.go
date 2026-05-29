@@ -9,10 +9,7 @@ import (
 	"strings"
 )
 
-const (
-	TypeAntiDetect       = "antidetect"
-	TypeAntiDetectLegacy = "anti_detect"
-)
+const TypeAntiDetect = "anti_detect"
 
 type AntiDetectResult struct {
 	RootDetection     []DetectionFinding `json:"root_detection,omitempty"`
@@ -32,12 +29,12 @@ type DetectionFinding struct {
 }
 
 type DetectionSummary struct {
-	HasRootDetection     bool   `json:"has_root_detection"`
-	HasFridaDetection    bool   `json:"has_frida_detection"`
-	HasEmulatorDetection bool   `json:"has_emulator_detection"`
-	HasDebugDetection    bool   `json:"has_debug_detection"`
-	HasTamperDetection   bool   `json:"has_tamper_detection"`
-	TotalFindings        int    `json:"total_findings"`
+	HasRootDetection     bool `json:"has_root_detection"`
+	HasFridaDetection    bool `json:"has_frida_detection"`
+	HasEmulatorDetection bool `json:"has_emulator_detection"`
+	HasDebugDetection    bool `json:"has_debug_detection"`
+	HasTamperDetection   bool `json:"has_tamper_detection"`
+	TotalFindings        int  `json:"total_findings"`
 	ProtectionLevel      string `json:"protection_level"` // none, basic, moderate, strong
 }
 

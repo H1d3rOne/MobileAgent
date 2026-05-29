@@ -10,40 +10,40 @@ import (
 const TypeReport = "report"
 
 type ReportSection struct {
-	Title    string   `json:"title"`
-	Status   string   `json:"status"` // pass, warn, fail, info
-	Summary  string   `json:"summary"`
+	Title    string `json:"title"`
+	Status   string `json:"status"` // pass, warn, fail, info
+	Summary  string `json:"summary"`
 	Details  []string `json:"details,omitempty"`
-	Category string   `json:"category"` // MASVS category
+	Category string `json:"category"` // MASVS category
 }
 
 type SecurityReport struct {
-	GeneratedAt  time.Time          `json:"generated_at"`
-	Package      string             `json:"package"`
-	Version      string             `json:"version"`
-	OverallScore float64            `json:"overall_score"` // 0-100, higher = more secure
-	RiskLevel    string             `json:"risk_level"`    // critical, high, medium, low
-	Sections     []ReportSection    `json:"sections"`
-	Statistics   ReportStats        `json:"statistics"`
-	Manifest     *ManifestResult    `json:"manifest,omitempty"`
-	Certificate  *CertificateResult `json:"certificate,omitempty"`
-	CodeFindings *CodeResult        `json:"code_findings,omitempty"`
-	SDKs         *SDKResult         `json:"sdks,omitempty"`
-	Risks        *RiskResult        `json:"risks,omitempty"`
-	Packer       *PackerResult      `json:"packer,omitempty"`
+	GeneratedAt   time.Time       `json:"generated_at"`
+	Package       string          `json:"package"`
+	Version       string          `json:"version"`
+	OverallScore  float64         `json:"overall_score"`  // 0-100, higher = more secure
+	RiskLevel     string          `json:"risk_level"`     // critical, high, medium, low
+	Sections      []ReportSection `json:"sections"`
+	Statistics    ReportStats     `json:"statistics"`
+	Manifest      *ManifestResult     `json:"manifest,omitempty"`
+	Certificate   *CertificateResult  `json:"certificate,omitempty"`
+	CodeFindings  *CodeResult         `json:"code_findings,omitempty"`
+	SDKs          *SDKResult          `json:"sdks,omitempty"`
+	Risks         *RiskResult         `json:"risks,omitempty"`
+	Packer        *PackerResult       `json:"packer,omitempty"`
 }
 
 type ReportStats struct {
-	TotalPermissions   int `json:"total_permissions"`
-	DangerousPerms     int `json:"dangerous_permissions"`
-	ExportedComponents int `json:"exported_components"`
-	SecretsFound       int `json:"secrets_found"`
-	DangerousAPIs      int `json:"dangerous_apis"`
-	Endpoints          int `json:"endpoints"`
-	SDKCount           int `json:"sdk_count"`
-	HighRisks          int `json:"high_risks"`
-	MediumRisks        int `json:"medium_risks"`
-	LowRisks           int `json:"low_risks"`
+	TotalPermissions    int `json:"total_permissions"`
+	DangerousPerms      int `json:"dangerous_permissions"`
+	ExportedComponents  int `json:"exported_components"`
+	SecretsFound        int `json:"secrets_found"`
+	DangerousAPIs       int `json:"dangerous_apis"`
+	Endpoints           int `json:"endpoints"`
+	SDKCount            int `json:"sdk_count"`
+	HighRisks           int `json:"high_risks"`
+	MediumRisks         int `json:"medium_risks"`
+	LowRisks            int `json:"low_risks"`
 }
 
 func GenerateReport(apkPath, decompiledPath string) (*SecurityReport, error) {
@@ -631,7 +631,7 @@ func FormatReportText(r *SecurityReport) string {
 	b.WriteString(fmt.Sprintf("- Third-party SDKs: %d\n", r.Statistics.SDKCount))
 	b.WriteString(fmt.Sprintf("- Risks: %d high, %d medium, %d low\n\n", r.Statistics.HighRisks, r.Statistics.MediumRisks, r.Statistics.LowRisks))
 
-	categories := []string{"MASVS-STORAGE", "MASVS-CRYPTO", "MASVS-AUTH", "MASVS-NETWORK", "MASVS-PLATFORM", "MASVS-CODE", "MASVS-RESILIENCE", "DYNAMIC"}
+	categories := []string{"MASVS-STORAGE", "MASVS-CRYPTO", "MASVS-AUTH", "MASVS-NETWORK", "MASVS-PLATFORM", "MASVS-CODE", "MASVS-RESILIENCE"}
 	for _, cat := range categories {
 		catSections := filterByCategory(r.Sections, cat)
 		if len(catSections) == 0 {

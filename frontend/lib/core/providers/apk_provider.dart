@@ -2,18 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/apk_model.dart';
 import '../services/api_service.dart';
 
-const analysisTypes = [
-  'manifest',
-  'certificate',
-  'risk',
-  'attack_surface',
-  'entry_trace',
-  'packer',
-  'code',
-  'sdk',
-  'strings',
-  'antidetect'
-];
+const analysisTypes = ['manifest', 'certificate', 'risk', 'code', 'sdk', 'strings', 'antidetect'];
 
 class ApkState {
   final List<ApkInfo> apks;
@@ -64,13 +53,9 @@ class ApkState {
         analysis: clearAnalysis ? null : (analysis ?? this.analysis),
         loading: loading ?? this.loading,
         error: error,
-        decompileStatus:
-            clearDecompile ? '' : (decompileStatus ?? this.decompileStatus),
-        decompileOutputDir: clearDecompile
-            ? null
-            : (decompileOutputDir ?? this.decompileOutputDir),
-        decompileTool:
-            clearDecompile ? null : (decompileTool ?? this.decompileTool),
+        decompileStatus: clearDecompile ? '' : (decompileStatus ?? this.decompileStatus),
+        decompileOutputDir: clearDecompile ? null : (decompileOutputDir ?? this.decompileOutputDir),
+        decompileTool: clearDecompile ? null : (decompileTool ?? this.decompileTool),
         analyses: analyses ?? this.analyses,
         runningAnalyzers: runningAnalyzers ?? this.runningAnalyzers,
         analyzerErrors: analyzerErrors ?? this.analyzerErrors,
@@ -107,9 +92,7 @@ class ApkNotifier extends StateNotifier<ApkState> {
       state = state.copyWith(
         apks: apks,
         selected: selected,
-        analysis: selected != null
-            ? _analysisCache[selected.path] ?? _buildAnalysisFromApk(selected)
-            : null,
+        analysis: selected != null ? _analysisCache[selected.path] ?? _buildAnalysisFromApk(selected) : null,
         decompileStatus: selected?.decompileTool != null ? 'Done' : '',
         decompileOutputDir: selected?.decompiledPath,
         decompileTool: selected?.decompileTool,
@@ -257,36 +240,10 @@ class ApkNotifier extends StateNotifier<ApkState> {
     }
   }
 
-  Future<void> runTriage({bool includeCallgraph = false}) async {
-    final apk = state.selected;
-    const type = 'triage';
-    if (apk == null || (apk.id ?? '').isEmpty) return;
-    final running = Set<String>.from(state.runningAnalyzers)..add(type);
-    final errors = Map<String, String>.from(state.analyzerErrors)..remove(type);
-    state = state.copyWith(runningAnalyzers: running, analyzerErrors: errors);
-    try {
-      final result = await _api.runApkTriage(
-        apk.id!,
-        includeCallgraph: includeCallgraph,
-      );
-      final next = Map<String, dynamic>.from(state.analyses);
-      next[type] = result;
-      _analysesByApkId[apk.id!] = next;
-      final r = Set<String>.from(state.runningAnalyzers)..remove(type);
-      state = state.copyWith(analyses: next, runningAnalyzers: r);
-    } catch (e) {
-      final r = Set<String>.from(state.runningAnalyzers)..remove(type);
-      final err = Map<String, String>.from(state.analyzerErrors);
-      err[type] = e.toString();
-      state = state.copyWith(runningAnalyzers: r, analyzerErrors: err);
-    }
-  }
-
   Future<void> runAllAnalyzers() async {
     final apk = state.selected;
     if (apk == null || (apk.id ?? '').isEmpty) return;
-    final running = Set<String>.from(state.runningAnalyzers)
-      ..addAll(analysisTypes);
+    final running = Set<String>.from(state.runningAnalyzers)..addAll(analysisTypes);
     state = state.copyWith(runningAnalyzers: running, analyzerErrors: const {});
     try {
       final result = await _api.runApkAnalyzer(apk.id!, 'all');

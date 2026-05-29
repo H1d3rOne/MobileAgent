@@ -124,8 +124,7 @@ class ApiConfig {
             .toList() ??
         [];
     return ApiConfig(
-      backendUrl:
-          json['backendUrl'] ?? json['baseUrl'] ?? 'http://localhost:8320',
+      backendUrl: json['backendUrl'] ?? json['baseUrl'] ?? 'http://localhost:8320',
       providers: providersList,
       activeProviderId: json['activeProviderId'] ?? '',
       adbPath: json['adbPath'] ?? 'adb',
@@ -227,16 +226,14 @@ class ApiConfigNotifier extends StateNotifier<ApiConfig> {
   Future<void> addProvider(LLMProvider provider) async {
     final updated = state.copyWith(
       providers: [...state.providers, provider],
-      activeProviderId:
-          state.providers.isEmpty ? provider.id : state.activeProviderId,
+      activeProviderId: state.providers.isEmpty ? provider.id : state.activeProviderId,
     );
     state = updated;
     await _save();
   }
 
   Future<void> updateProvider(LLMProvider provider) async {
-    final providers =
-        state.providers.map((p) => p.id == provider.id ? provider : p).toList();
+    final providers = state.providers.map((p) => p.id == provider.id ? provider : p).toList();
     state = state.copyWith(providers: providers);
     await _save();
   }
@@ -270,25 +267,20 @@ class ApiService {
         headers: {'Content-Type': 'application/json'},
       ),
     );
-    _dio.interceptors
-        .add(LogInterceptor(requestBody: true, responseBody: false));
+    _dio.interceptors.add(LogInterceptor(requestBody: true, responseBody: false));
   }
 
   dynamic _data(Response res) => res.data['data'];
 
-  Stream<ChatStreamEvent> streamChat(String sessionId, String message,
-      {List<String>? attachmentPaths}) async* {
+  Stream<ChatStreamEvent> streamChat(String sessionId, String message, {List<String>? attachmentPaths}) async* {
     if (kIsWeb) {
-      yield* _streamChatWeb(sessionId, message,
-          attachmentPaths: attachmentPaths);
+      yield* _streamChatWeb(sessionId, message, attachmentPaths: attachmentPaths);
     } else {
-      yield* _streamChatNative(sessionId, message,
-          attachmentPaths: attachmentPaths);
+      yield* _streamChatNative(sessionId, message, attachmentPaths: attachmentPaths);
     }
   }
 
-  Map<String, dynamic> _buildChatData(String sessionId, String message,
-      {List<String>? attachmentPaths}) {
+  Map<String, dynamic> _buildChatData(String sessionId, String message, {List<String>? attachmentPaths}) {
     return {
       'conversation_id': sessionId,
       'message': message,
@@ -303,12 +295,10 @@ class ApiService {
     };
   }
 
-  Stream<ChatStreamEvent> _streamChatNative(String sessionId, String message,
-      {List<String>? attachmentPaths}) async* {
+  Stream<ChatStreamEvent> _streamChatNative(String sessionId, String message, {List<String>? attachmentPaths}) async* {
     final response = await _dio.post<ResponseBody>(
       '/chat',
-      data:
-          _buildChatData(sessionId, message, attachmentPaths: attachmentPaths),
+      data: _buildChatData(sessionId, message, attachmentPaths: attachmentPaths),
       options: Options(
         responseType: ResponseType.stream,
         headers: {'Accept': 'text/event-stream'},
@@ -338,11 +328,9 @@ class ApiService {
     }
   }
 
-  Stream<ChatStreamEvent> _streamChatWeb(String sessionId, String message,
-      {List<String>? attachmentPaths}) async* {
+  Stream<ChatStreamEvent> _streamChatWeb(String sessionId, String message, {List<String>? attachmentPaths}) async* {
     final url = '${config.baseUrl}/api/v1/chat';
-    final body = jsonEncode(
-        _buildChatData(sessionId, message, attachmentPaths: attachmentPaths));
+    final body = jsonEncode(_buildChatData(sessionId, message, attachmentPaths: attachmentPaths));
     final stream = webSseStream(
       url: url,
       headers: {
@@ -437,8 +425,7 @@ class ApiService {
           );
           break;
         case 'error':
-          yield ChatStreamEvent(
-              type: 'error', content: json['content'] ?? json['error']);
+          yield ChatStreamEvent(type: 'error', content: json['content'] ?? json['error']);
           break;
         default:
           yield ChatStreamEvent.fromJson(json);
@@ -463,12 +450,10 @@ class ApiService {
   }
 
   Future<void> rollbackConversation(String id, String actionId) async {
-    await _dio
-        .post('/conversations/$id/rollback', data: {'action_id': actionId});
+    await _dio.post('/conversations/$id/rollback', data: {'action_id': actionId});
   }
 
-  Future<Map<String, dynamic>> approveToolCall(
-      String toolCallId, bool approved) async {
+  Future<Map<String, dynamic>> approveToolCall(String toolCallId, bool approved) async {
     final res = await _dio.post('/chat/approve', data: {
       'tool_call_id': toolCallId,
       'approved': approved,
@@ -476,10 +461,8 @@ class ApiService {
     return _data(res) as Map<String, dynamic>;
   }
 
-  Future<List<Map<String, dynamic>>> listPendingApprovals(
-      String conversationId) async {
-    final res =
-        await _dio.get('/conversations/$conversationId/pending-approvals');
+  Future<List<Map<String, dynamic>>> listPendingApprovals(String conversationId) async {
+    final res = await _dio.get('/conversations/$conversationId/pending-approvals');
     final data = _data(res);
     if (data is List) return data.cast<Map<String, dynamic>>();
     return [];
@@ -498,8 +481,7 @@ class ApiService {
   }
 
   Future<String> executeShell(String serial, String command) async {
-    final res =
-        await _dio.post('/devices/$serial/shell', data: {'command': command});
+    final res = await _dio.post('/devices/$serial/shell', data: {'command': command});
     return _data(res)['output'] ?? '';
   }
 
@@ -513,17 +495,13 @@ class ApiService {
     return _data(res) as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> listPackages(String serial,
-      {String? filter}) async {
-    final res =
-        await _dio.post('/devices/$serial/packages', data: {'filter': filter});
+  Future<Map<String, dynamic>> listPackages(String serial, {String? filter}) async {
+    final res = await _dio.post('/devices/$serial/packages', data: {'filter': filter});
     return _data(res) as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> connectWireless(
-      String serial, String address) async {
-    final res =
-        await _dio.post('/devices/$serial/connect', data: {'address': address});
+  Future<Map<String, dynamic>> connectWireless(String serial, String address) async {
+    final res = await _dio.post('/devices/$serial/connect', data: {'address': address});
     return _data(res) as Map<String, dynamic>;
   }
 
@@ -575,18 +553,7 @@ class ApiService {
     return {};
   }
 
-  Future<Map<String, dynamic>> runApkTriage(String id,
-      {bool includeCallgraph = false}) async {
-    final res = await _dio.post('/apk/$id/analyze/triage', data: {
-      'include_callgraph': includeCallgraph,
-    });
-    final data = _data(res);
-    if (data is Map) return data.cast<String, dynamic>();
-    return {};
-  }
-
-  Future<Map<String, dynamic>> decompileApk(String apkPath,
-      {String tool = 'apktool', String? id}) async {
+  Future<Map<String, dynamic>> decompileApk(String apkPath, {String tool = 'apktool', String? id}) async {
     final res = await _dio.post('/apk/decompile', data: {
       'path': apkPath,
       'tool': tool,
@@ -596,41 +563,26 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> browseFile(String dir, String file) async {
-    final res = await _dio
-        .get('/apk/file', queryParameters: {'dir': dir, 'file': file});
+    final res = await _dio.get('/apk/file', queryParameters: {'dir': dir, 'file': file});
     return _data(res) as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> buildApk(String projectPath,
-      {Map<String, dynamic>? options}) async {
-    final res = await _dio.post('/apk/build', data: {
-      'source_dir': projectPath,
-      'project_path': projectPath,
-      ...?options
-    });
+  Future<Map<String, dynamic>> buildApk(String projectPath, {Map<String, dynamic>? options}) async {
+    final res = await _dio.post('/apk/build', data: {'project_path': projectPath, ...?options});
     return _data(res) as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> signApk(
-    String apkPath, {
-    String? keystorePath,
-    String? keyAlias,
-    String? storePass,
-    String? keyPass,
-  }) async {
+  Future<Map<String, dynamic>> signApk(String apkPath, {String? keystorePath, String? keyAlias}) async {
     final res = await _dio.post('/apk/sign', data: {
       'apk_path': apkPath,
       'keystore_path': keystorePath,
       'key_alias': keyAlias,
-      'store_pass': storePass,
-      'key_pass': keyPass,
     });
     return _data(res) as Map<String, dynamic>;
   }
 
   Future<Map<String, dynamic>> installApk(String serial, String apkPath) async {
-    final res = await _dio
-        .post('/apk/install', data: {'serial': serial, 'apk_path': apkPath});
+    final res = await _dio.post('/apk/install', data: {'serial': serial, 'apk_path': apkPath});
     return _data(res) as Map<String, dynamic>;
   }
 
@@ -661,13 +613,6 @@ class ApiService {
     return _data(res) as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> evidencePackage(String apkId) async {
-    final res = await _dio.get('/apk/$apkId/evidence_package');
-    final data = _data(res);
-    if (data is Map) return data.cast<String, dynamic>();
-    return {};
-  }
-
   Future<Map<String, dynamic>> detectPacker(String apkId) async {
     final res = await _dio.get('/apk/$apkId/packer');
     return _data(res) as Map<String, dynamic>;
@@ -685,58 +630,22 @@ class ApiService {
 
   Future<Map<String, dynamic>> generateHooks(String apkId) async {
     final res = await _dio.get('/apk/$apkId/hooks');
-    final data = _data(res);
-    if (data is Map) return data.cast<String, dynamic>();
-    if (data is List) {
-      return {
-        'hooks': data.cast<Map<String, dynamic>>(),
-        'count': data.length,
-      };
-    }
-    return {'hooks': <Map<String, dynamic>>[], 'count': 0};
+    return _data(res) as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> reversePlan(String apkId) async {
-    final res = await _dio.post('/apk/$apkId/reverse_plan');
-    final data = _data(res);
-    if (data is Map) return data.cast<String, dynamic>();
-    return {};
-  }
-
-  Future<Map<String, dynamic>> reverseValidate(String apkId) async {
-    final res = await _dio.post('/apk/$apkId/reverse_validate');
-    final data = _data(res);
-    if (data is Map) return data.cast<String, dynamic>();
-    return {};
-  }
-
-  Future<Map<String, dynamic>> runtimePlan(String apkId,
-      {String? serial}) async {
-    final res = await _dio.post('/apk/$apkId/runtime_plan', data: {
-      if (serial != null && serial.isNotEmpty) 'serial': serial,
-    });
-    final data = _data(res);
-    if (data is Map) return data.cast<String, dynamic>();
-    return {};
-  }
-
-  Future<Map<String, dynamic>> callGraph(String apkId,
-      {String? package_}) async {
+  Future<Map<String, dynamic>> callGraph(String apkId, {String? package_}) async {
     final params = <String, dynamic>{};
     if (package_ != null) params['package'] = package_;
-    final res =
-        await _dio.get('/apk/$apkId/callgraph', queryParameters: params);
+    final res = await _dio.get('/apk/$apkId/callgraph', queryParameters: params);
     return _data(res) as Map<String, dynamic>;
   }
 
   Future<Map<String, dynamic>> diffAPKs(String oldId, String newId) async {
-    final res = await _dio
-        .get('/apk/diff', queryParameters: {'old': oldId, 'new': newId});
+    final res = await _dio.get('/apk/diff', queryParameters: {'old': oldId, 'new': newId});
     return _data(res) as Map<String, dynamic>;
   }
 
-  Future<List<Map<String, dynamic>>> listFridaScripts(
-      {String? category}) async {
+  Future<List<Map<String, dynamic>>> listFridaScripts({String? category}) async {
     final params = <String, dynamic>{};
     if (category != null) params['category'] = category;
     final res = await _dio.get('/frida/scripts', queryParameters: params);
@@ -752,40 +661,26 @@ class ApiService {
     return _data(res) as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> runFridaScript(
-      String scriptId, String serial, String target,
-      {int timeout = 30, String? apkId}) async {
+  Future<Map<String, dynamic>> runFridaScript(String scriptId, String serial, String target, {int timeout = 30}) async {
     final res = await _dio.post('/frida/scripts/$scriptId/run', data: {
       'serial': serial,
       'target': target,
       'timeout': timeout,
-      if (apkId != null && apkId.isNotEmpty) 'apk_id': apkId,
     });
-    final data = _data(res);
-    if (data is Map) return data.cast<String, dynamic>();
-    if (res.data is Map) return (res.data as Map).cast<String, dynamic>();
-    return {};
+    return _data(res) as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> runFridaCode(
-      String serial, String target, String script,
-      {int timeout = 30, String? apkId, String? hookId}) async {
+  Future<Map<String, dynamic>> runFridaCode(String serial, String target, String script, {int timeout = 30}) async {
     final res = await _dio.post('/frida/run', data: {
       'serial': serial,
       'target': target,
       'script': script,
       'timeout': timeout,
-      if (apkId != null && apkId.isNotEmpty) 'apk_id': apkId,
-      if (hookId != null && hookId.isNotEmpty) 'hook_id': hookId,
     });
-    final data = _data(res);
-    if (data is Map) return data.cast<String, dynamic>();
-    if (res.data is Map) return (res.data as Map).cast<String, dynamic>();
-    return {};
+    return _data(res) as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> parseNetworkCapture(
-      List<int> fileBytes, String fileName) async {
+  Future<Map<String, dynamic>> parseNetworkCapture(List<int> fileBytes, String fileName) async {
     final formData = FormData.fromMap({
       'file': MultipartFile.fromBytes(fileBytes, filename: fileName),
     });
@@ -823,8 +718,7 @@ class ApiService {
     return [];
   }
 
-  Future<Map<String, dynamic>> installSkill(
-      Map<String, dynamic> payload) async {
+  Future<Map<String, dynamic>> installSkill(Map<String, dynamic> payload) async {
     final res = await _dio.post('/skills/install', data: payload);
     return _data(res) as Map<String, dynamic>;
   }
@@ -843,8 +737,7 @@ class ApiService {
     await _dio.delete('/skills/$id');
   }
 
-  Future<List<Map<String, dynamic>>> listMemory(
-      {String? query, String? scope}) async {
+  Future<List<Map<String, dynamic>>> listMemory({String? query, String? scope}) async {
     final res = await _dio.get(
       '/memory',
       queryParameters: {
@@ -897,10 +790,8 @@ class ApiService {
     return [];
   }
 
-  Future<Map<String, dynamic>> installMcp(Map<String, dynamic> payload,
-      {bool manual = false}) async {
-    final res =
-        await _dio.post(manual ? '/mcp/manual' : '/mcp/install', data: payload);
+  Future<Map<String, dynamic>> installMcp(Map<String, dynamic> payload, {bool manual = false}) async {
+    final res = await _dio.post(manual ? '/mcp/manual' : '/mcp/install', data: payload);
     return _data(res) as Map<String, dynamic>;
   }
 
@@ -937,10 +828,8 @@ class ApiService {
     return [];
   }
 
-  Future<Map<String, dynamic>> addMarketSource(
-      {required String url, String name = ''}) async {
-    final res =
-        await _dio.post('/market/sources', data: {'url': url, 'name': name});
+  Future<Map<String, dynamic>> addMarketSource({required String url, String name = ''}) async {
+    final res = await _dio.post('/market/sources', data: {'url': url, 'name': name});
     return _data(res) as Map<String, dynamic>;
   }
 
@@ -961,12 +850,7 @@ class ChatStreamEvent {
   final Map<String, dynamic>? toolResult;
   final Map<String, dynamic>? approvalRequest;
 
-  ChatStreamEvent(
-      {required this.type,
-      this.content,
-      this.toolCall,
-      this.toolResult,
-      this.approvalRequest});
+  ChatStreamEvent({required this.type, this.content, this.toolCall, this.toolResult, this.approvalRequest});
 
   factory ChatStreamEvent.fromJson(Map<String, dynamic> json) {
     return ChatStreamEvent(

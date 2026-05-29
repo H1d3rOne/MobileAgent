@@ -24,8 +24,6 @@ tools:
   frida: "../tools/bin/frida"
   radare2: "../tools/bin/r2"
   androguard: "../tools/bin/androguard"
-  apksigner: "../tools/bin/apksigner"
-  zipalign: "../tools/bin/zipalign"
   uber_apk_signer: "../tools/bin/uber-apk-signer"
   bundletool: "../tools/bin/bundletool"
   mitmproxy: "../tools/bin/mitmproxy"

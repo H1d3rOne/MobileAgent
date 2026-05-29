@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"github.com/spf13/viper"
 )
 
 type Config struct {
@@ -54,16 +54,14 @@ type LLMConfig struct {
 }
 
 type ToolsConfig struct {
-	APKTool       string `mapstructure:"apktool"`
-	JADX          string `mapstructure:"jadx"`
-	Frida         string `mapstructure:"frida"`
-	Radare2       string `mapstructure:"radare2"`
-	Androguard    string `mapstructure:"androguard"`
-	APKSigner     string `mapstructure:"apksigner"`
-	Zipalign      string `mapstructure:"zipalign"`
-	UberApkSigner string `mapstructure:"uber_apk_signer"`
-	Bundletool    string `mapstructure:"bundletool"`
-	Mitmproxy     string `mapstructure:"mitmproxy"`
+	APKTool        string `mapstructure:"apktool"`
+	JADX           string `mapstructure:"jadx"`
+	Frida          string `mapstructure:"frida"`
+	Radare2        string `mapstructure:"radare2"`
+	Androguard     string `mapstructure:"androguard"`
+	UberApkSigner  string `mapstructure:"uber_apk_signer"`
+	Bundletool     string `mapstructure:"bundletool"`
+	Mitmproxy      string `mapstructure:"mitmproxy"`
 }
 
 type StorageConfig struct {
@@ -127,8 +125,6 @@ func Load(configPath string) (*Config, error) {
 	v.SetDefault("tools.frida", "../tools/bin/frida")
 	v.SetDefault("tools.radare2", "../tools/bin/r2")
 	v.SetDefault("tools.androguard", "../tools/bin/androguard")
-	v.SetDefault("tools.apksigner", "../tools/bin/apksigner")
-	v.SetDefault("tools.zipalign", "../tools/bin/zipalign")
 	v.SetDefault("tools.uber_apk_signer", "../tools/bin/uber-apk-signer")
 	v.SetDefault("tools.bundletool", "../tools/bin/bundletool")
 	v.SetDefault("tools.mitmproxy", "../tools/bin/mitmproxy")

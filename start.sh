@@ -8,7 +8,6 @@ set -euo pipefail
 PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
 BACKEND_DIR="$PROJECT_ROOT/backend-go"
 FRONTEND_DIR="$PROJECT_ROOT/frontend"
-export PATH="$PROJECT_ROOT/tools/bin:$PATH"
 BACKEND_PORT=8320
 FRONTEND_PORT=9999
 LOG_DIR="/tmp/mobileagent"

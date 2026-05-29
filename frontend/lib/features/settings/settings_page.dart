@@ -28,8 +28,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     super.initState();
     final config = ref.read(apiConfigProvider);
     _adbPathController = TextEditingController(text: config.adbPath);
-    _approvalMode =
-        config.approvalMode.isNotEmpty ? config.approvalMode : 'approval';
+    _approvalMode = config.approvalMode.isNotEmpty ? config.approvalMode : 'approval';
     _syncProviderFields(config.activeProvider);
   }
 
@@ -65,36 +64,29 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         children: [
           Text('Settings', style: theme.textTheme.headlineMedium),
           const SizedBox(height: 24),
+
           _buildSectionHeader('LLM Provider', Icons.smart_toy, theme),
           const SizedBox(height: 4),
           Text('Select a provider or add a new one',
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
           const SizedBox(height: 12),
+
           Row(
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  initialValue: activeProvider?.id,
+                  value: activeProvider?.id,
                   decoration: const InputDecoration(
                     labelText: 'Provider',
                     prefixIcon: Icon(Icons.cloud),
                   ),
-                  items: providers
-                      .map((p) => DropdownMenuItem(
-                            value: p.id,
-                            child: Text(p.name.isNotEmpty
-                                ? p.name
-                                : p.model.isNotEmpty
-                                    ? p.model
-                                    : 'Unnamed'),
-                          ))
-                      .toList(),
+                  items: providers.map((p) => DropdownMenuItem(
+                    value: p.id,
+                    child: Text(p.name.isNotEmpty ? p.name : p.model.isNotEmpty ? p.model : 'Unnamed'),
+                  )).toList(),
                   onChanged: (id) {
                     if (id != null) {
-                      ref
-                          .read(apiConfigProvider.notifier)
-                          .setActiveProvider(id);
+                      ref.read(apiConfigProvider.notifier).setActiveProvider(id);
                       final selected = providers.firstWhere((p) => p.id == id);
                       setState(() => _syncProviderFields(selected));
                     }
@@ -115,6 +107,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 ),
             ],
           ),
+
           if (activeProvider != null) ...[
             const SizedBox(height: 16),
             TextField(
@@ -128,14 +121,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              initialValue: _apiType,
+              value: _apiType,
               decoration: const InputDecoration(
                 labelText: 'API Type',
                 prefixIcon: Icon(Icons.api),
               ),
               items: const [
-                DropdownMenuItem(
-                    value: 'chat_completions', child: Text('Chat Completions')),
+                DropdownMenuItem(value: 'chat_completions', child: Text('Chat Completions')),
                 DropdownMenuItem(value: 'responses', child: Text('Responses')),
               ],
               onChanged: (v) {
@@ -163,8 +155,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 labelText: 'API Key',
                 prefixIcon: const Icon(Icons.key),
                 suffixIcon: IconButton(
-                  icon: Icon(
-                      _obscureKey ? Icons.visibility_off : Icons.visibility),
+                  icon: Icon(_obscureKey ? Icons.visibility_off : Icons.visibility),
                   onPressed: () => setState(() => _obscureKey = !_obscureKey),
                 ),
               ),
@@ -175,24 +166,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    initialValue: _modelList.contains(_modelCtrl.text)
-                        ? _modelCtrl.text
-                        : null,
+                    value: _modelList.contains(_modelCtrl.text) ? _modelCtrl.text : null,
                     decoration: InputDecoration(
                       labelText: 'Model',
-                      hintText: _modelList.isEmpty
-                          ? 'Click refresh to load models'
-                          : 'Select a model',
+                      hintText: _modelList.isEmpty ? 'Click refresh to load models' : 'Select a model',
                       prefixIcon: const Icon(Icons.psychology),
                     ),
                     items: [
-                      if (_modelCtrl.text.isNotEmpty &&
-                          !_modelList.contains(_modelCtrl.text))
-                        DropdownMenuItem(
-                            value: _modelCtrl.text,
-                            child: Text(_modelCtrl.text)),
-                      ..._modelList.map(
-                          (m) => DropdownMenuItem(value: m, child: Text(m))),
+                      if (_modelCtrl.text.isNotEmpty && !_modelList.contains(_modelCtrl.text))
+                        DropdownMenuItem(value: _modelCtrl.text, child: Text(_modelCtrl.text)),
+                      ..._modelList.map((m) => DropdownMenuItem(value: m, child: Text(m))),
                     ],
                     onChanged: (v) {
                       if (v != null) {
@@ -206,10 +189,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 IconButton(
                   onPressed: _loadingModels ? null : _fetchModels,
                   icon: _loadingModels
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2))
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                       : const Icon(Icons.refresh),
                   tooltip: 'Fetch models from API',
                 ),
@@ -217,6 +197,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ),
           ],
           const SizedBox(height: 32),
+
           _buildSectionHeader('ADB Configuration', Icons.phone_android, theme),
           const SizedBox(height: 12),
           TextField(
@@ -229,27 +210,22 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             onChanged: (_) => _saveGlobalConfig(),
           ),
           const SizedBox(height: 32),
+
           _buildSectionHeader('Agent Behavior', Icons.security, theme),
           const SizedBox(height: 4),
           Text('Control what the agent can run when it calls dangerous tools.',
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            initialValue: _approvalMode,
+            value: _approvalMode,
             decoration: const InputDecoration(
               labelText: 'Approval Mode',
               prefixIcon: Icon(Icons.shield),
             ),
             items: const [
-              DropdownMenuItem(
-                  value: 'deny',
-                  child: Text('Deny — block all dangerous tools')),
-              DropdownMenuItem(
-                  value: 'approval',
-                  child: Text('Approval — ask before running')),
-              DropdownMenuItem(
-                  value: 'yolo', child: Text('Yolo — allow without prompting')),
+              DropdownMenuItem(value: 'deny', child: Text('Deny — block all dangerous tools')),
+              DropdownMenuItem(value: 'approval', child: Text('Approval — ask before running')),
+              DropdownMenuItem(value: 'yolo', child: Text('Yolo — allow without prompting')),
             ],
             onChanged: (value) {
               if (value != null) {
@@ -259,6 +235,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             },
           ),
           const SizedBox(height: 32),
+
           _buildSectionHeader('Appearance', Icons.palette, theme),
           const SizedBox(height: 12),
           ListTile(
@@ -289,28 +266,25 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final active = config.activeProvider;
     if (active == null) return;
     ref.read(apiConfigProvider.notifier).updateProvider(active.copyWith(
-          name: _nameCtrl.text.trim(),
-          baseUrl: _urlCtrl.text.trim(),
-          apiKey: _keyCtrl.text.trim(),
-          model: _modelCtrl.text.trim(),
-          apiType: _apiType,
-        ));
+      name: _nameCtrl.text.trim(),
+      baseUrl: _urlCtrl.text.trim(),
+      apiKey: _keyCtrl.text.trim(),
+      model: _modelCtrl.text.trim(),
+      apiType: _apiType,
+    ));
   }
 
   void _saveGlobalConfig() {
     final config = ref.read(apiConfigProvider);
     ref.read(apiConfigProvider.notifier).update(config.copyWith(
-          adbPath: _adbPathController.text.trim().isEmpty
-              ? 'adb'
-              : _adbPathController.text.trim(),
-          approvalMode: _approvalMode,
-        ));
+      adbPath: _adbPathController.text.trim().isEmpty ? 'adb' : _adbPathController.text.trim(),
+      approvalMode: _approvalMode,
+    ));
   }
 
   void _addProvider() {
     final id = DateTime.now().millisecondsSinceEpoch.toString();
-    final provider =
-        LLMProvider(id: id, name: '', apiKey: '', baseUrl: '', model: '');
+    final provider = LLMProvider(id: id, name: '', apiKey: '', baseUrl: '', model: '');
     ref.read(apiConfigProvider.notifier).addProvider(provider);
     setState(() => _syncProviderFields(provider));
   }
@@ -331,8 +305,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       if (apiKey.isNotEmpty) {
         headers['Authorization'] = 'Bearer $apiKey';
       }
-      final url =
-          baseUrl.endsWith('/') ? '${baseUrl}models' : '$baseUrl/models';
+      final url = baseUrl.endsWith('/') ? '${baseUrl}models' : '$baseUrl/models';
       final resp = await dio.get(url, options: Options(headers: headers));
       final data = resp.data;
       final List models;
@@ -344,8 +317,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         models = [];
       }
       final ids = models
-          .map((m) =>
-              m is Map ? (m['id'] ?? m['name'] ?? '').toString() : m.toString())
+          .map((m) => m is Map ? (m['id'] ?? m['name'] ?? '').toString() : m.toString())
           .where((s) => s.isNotEmpty)
           .toList()
         ..sort();
@@ -368,11 +340,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Provider'),
-        content: Text(
-            'Remove "${provider.name.isNotEmpty ? provider.name : "this provider"}"?'),
+        content: Text('Remove "${provider.name.isNotEmpty ? provider.name : "this provider"}"?'),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           TextButton(
             onPressed: () {
               ref.read(apiConfigProvider.notifier).removeProvider(provider.id);

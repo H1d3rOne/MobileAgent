@@ -6,7 +6,7 @@ import '../services/api_service.dart';
 
 class ChatNotifier extends StateNotifier<ChatState> {
   final Ref _ref;
-  ChatNotifier(this._ref) : super(const ChatState()) {
+  ChatNotifier(this._ref) : super(ChatState()) {
     loadSessions();
   }
 
@@ -16,17 +16,13 @@ class ChatNotifier extends StateNotifier<ChatState> {
     state = state.copyWith(loading: true);
     try {
       final conversations = await _api.listConversations();
-      final parsed = conversations
-          .map((s) => ChatSession(
-                id: s['id'] ?? '',
-                title: s['title'] ?? s['description'] ?? 'New Chat',
-                messages: [],
-                createdAt:
-                    DateTime.tryParse(s['created_at'] ?? '') ?? DateTime.now(),
-                updatedAt:
-                    DateTime.tryParse(s['updated_at'] ?? '') ?? DateTime.now(),
-              ))
-          .toList()
+      final parsed = conversations.map((s) => ChatSession(
+        id: s['id'] ?? '',
+        title: s['title'] ?? s['description'] ?? 'New Chat',
+        messages: [],
+        createdAt: DateTime.tryParse(s['created_at'] ?? '') ?? DateTime.now(),
+        updatedAt: DateTime.tryParse(s['updated_at'] ?? '') ?? DateTime.now(),
+      )).toList()
         ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
       // Preserve messages for sessions already loaded in memory.
       final existing = {for (final s in state.sessions) s.id: s};
@@ -46,11 +42,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
   Future<void> createSession({String? title}) async {
     final sessionId = 'session_${DateTime.now().millisecondsSinceEpoch}';
     final session = ChatSession(
-      id: sessionId,
-      title: title ?? 'New Chat',
-      messages: [],
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
+      id: sessionId, title: title ?? 'New Chat',
+      messages: [], createdAt: DateTime.now(), updatedAt: DateTime.now(),
     );
     state = state.copyWith(
       sessions: [session, ...state.sessions],
@@ -67,10 +60,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
         final actions = (conv['actions'] as List?) ?? [];
         final messages = _rebuildMessagesFromActions(actions);
         state = state.copyWith(
-          sessions: state.sessions
-              .map(
-                  (s) => s.id == sessionId ? s.copyWith(messages: messages) : s)
-              .toList(),
+          sessions: state.sessions.map((s) => s.id == sessionId ? s.copyWith(messages: messages) : s).toList(),
         );
       } catch (_) {}
     }
@@ -93,11 +83,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
             lastAssistant = null;
           }
           messages.add(ChatMessage(
-            id: actionId,
-            role: MessageRole.user,
-            content: content,
-            timestamp: DateTime.tryParse(a['created_at']?.toString() ?? '') ??
-                DateTime.now(),
+            id: actionId, role: MessageRole.user, content: content,
+            timestamp: DateTime.tryParse(a['created_at']?.toString() ?? '') ?? DateTime.now(),
           ));
           break;
         case 'assistant_message':
@@ -107,11 +94,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
             );
           } else {
             lastAssistant = ChatMessage(
-              id: actionId,
-              role: MessageRole.assistant,
-              content: content,
-              timestamp: DateTime.tryParse(a['created_at']?.toString() ?? '') ??
-                  DateTime.now(),
+              id: actionId, role: MessageRole.assistant, content: content,
+              timestamp: DateTime.tryParse(a['created_at']?.toString() ?? '') ?? DateTime.now(),
             );
           }
           break;
@@ -172,24 +156,20 @@ class ChatNotifier extends StateNotifier<ChatState> {
       final msgs = List<ChatMessage>.from(session.messages);
 
       // Append a synthetic assistant message with the pending approval tool calls.
-      final toolCalls = pending
-          .map((p) => ToolCall(
-                id: p['id'] ?? '',
-                name: p['name'] ?? '',
-                arguments: Map<String, dynamic>.from(p['arguments'] ?? {}),
-                status: ToolCallStatus.waitingApproval,
-                dangerous: true,
-              ))
-          .toList();
+      final toolCalls = pending.map((p) => ToolCall(
+        id: p['id'] ?? '',
+        name: p['name'] ?? '',
+        arguments: Map<String, dynamic>.from(p['arguments'] ?? {}),
+        status: ToolCallStatus.waitingApproval,
+        dangerous: true,
+      )).toList();
 
       // Check if the last assistant message already has these tool calls (avoid duplicates).
-      final lastAssistant =
-          msgs.lastIndexWhere((m) => m.role == MessageRole.assistant);
+      final lastAssistant = msgs.lastIndexWhere((m) => m.role == MessageRole.assistant);
       if (lastAssistant != -1) {
         final existing = msgs[lastAssistant].toolCalls ?? [];
         final existingIds = existing.map((t) => t.id).toSet();
-        final newCalls =
-            toolCalls.where((t) => !existingIds.contains(t.id)).toList();
+        final newCalls = toolCalls.where((t) => !existingIds.contains(t.id)).toList();
         if (newCalls.isNotEmpty) {
           msgs[lastAssistant] = msgs[lastAssistant].copyWith(
             toolCalls: [...existing, ...newCalls],
@@ -200,28 +180,24 @@ class ChatNotifier extends StateNotifier<ChatState> {
       }
 
       state = state.copyWith(
-        sessions: sessions
-            .map((s) => s.id == sessionId ? s.copyWith(messages: msgs) : s)
-            .toList(),
+        sessions: sessions.map((s) => s.id == sessionId ? s.copyWith(messages: msgs) : s).toList(),
       );
     } catch (_) {}
   }
-
+  
   Future<void> deleteSession(String sessionId) async {
     try {
       await _api.deleteConversation(sessionId);
       state = state.copyWith(
         sessions: state.sessions.where((s) => s.id != sessionId).toList(),
-        currentSessionId:
-            state.currentSessionId == sessionId ? null : state.currentSessionId,
+        currentSessionId: state.currentSessionId == sessionId ? null : state.currentSessionId,
       );
     } catch (e) {
       state = state.copyWith(error: e.toString());
     }
   }
-
-  Future<void> sendMessage(String content,
-      {List<String>? attachments, ApiConfig? config}) async {
+  
+  Future<void> sendMessage(String content, {List<String>? attachments, ApiConfig? config}) async {
     final sessionId = state.currentSessionId;
     if (sessionId == null) return;
 
@@ -239,23 +215,21 @@ class ChatNotifier extends StateNotifier<ChatState> {
     }
 
     state = state.copyWith(
-      sessions: state.sessions
-          .map((s) => s.id == sessionId
-              ? s.copyWith(
-                  messages: [...s.messages, userMsg, assistantMsg],
-                  updatedAt: DateTime.now(),
-                  title: newTitle ?? s.title,
-                )
-              : s)
-          .toList(),
+      sessions: state.sessions.map((s) => s.id == sessionId
+        ? s.copyWith(
+            messages: [...s.messages, userMsg, assistantMsg],
+            updatedAt: DateTime.now(),
+            title: newTitle ?? s.title,
+          )
+        : s
+      ).toList(),
       isStreaming: true,
     );
 
     try {
       final ApiConfig effectiveConfig = config ?? _ref.read(apiConfigProvider);
       final api = ApiService(effectiveConfig);
-      await for (final event
-          in api.streamChat(sessionId, content, attachmentPaths: attachments)) {
+      await for (final event in api.streamChat(sessionId, content, attachmentPaths: attachments)) {
         final sessions = state.sessions;
         final idx = sessions.indexWhere((s) => s.id == sessionId);
         if (idx == -1) continue;
@@ -263,7 +237,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
         final msgs = List<ChatMessage>.from(session.messages);
         final lastIdx = msgs.lastIndexWhere((m) => m.id == assistantMsg.id);
         if (lastIdx == -1) continue;
-
+        
         switch (event.type) {
           case 'meta':
             // Update session ID from server-assigned conversation_id
@@ -272,34 +246,25 @@ class ChatNotifier extends StateNotifier<ChatState> {
               if (sessionId != serverId) {
                 state = state.copyWith(
                   currentSessionId: serverId,
-                  sessions: state.sessions
-                      .map((s) =>
-                          s.id == sessionId ? s.copyWith(id: serverId) : s)
-                      .cast<ChatSession>()
-                      .toList(),
+                  sessions: state.sessions.map((s) => s.id == sessionId ? s.copyWith(id: serverId) : s).cast<ChatSession>().toList(),
                 );
               }
             }
             break;
           case 'token':
-            msgs[lastIdx] = msgs[lastIdx].copyWith(
-                content: msgs[lastIdx].content + (event.content ?? ''));
+            msgs[lastIdx] = msgs[lastIdx].copyWith(content: msgs[lastIdx].content + (event.content ?? ''));
             break;
           case 'tool_call':
             final calls = List<ToolCall>.from(msgs[lastIdx].toolCalls ?? []);
             // If a placeholder waitingApproval entry exists for this id, transition it to running.
             final id = event.toolCall?['id'] ?? '';
-            final pendingIdx = calls.indexWhere((c) =>
-                c.id == id && c.status == ToolCallStatus.waitingApproval);
+            final pendingIdx = calls.indexWhere((c) => c.id == id && c.status == ToolCallStatus.waitingApproval);
             if (pendingIdx != -1) {
-              calls[pendingIdx] =
-                  calls[pendingIdx].copyWith(status: ToolCallStatus.running);
+              calls[pendingIdx] = calls[pendingIdx].copyWith(status: ToolCallStatus.running);
             } else {
               calls.add(ToolCall(
-                id: id,
-                name: event.toolCall?['name'] ?? '',
-                arguments: Map<String, dynamic>.from(
-                    event.toolCall?['arguments'] ?? {}),
+                id: id, name: event.toolCall?['name'] ?? '',
+                arguments: Map<String, dynamic>.from(event.toolCall?['arguments'] ?? {}),
                 status: ToolCallStatus.running,
               ));
             }
@@ -307,8 +272,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
             break;
           case 'tool_result':
             final calls = List<ToolCall>.from(msgs[lastIdx].toolCalls ?? []);
-            final callIdx = calls
-                .indexWhere((c) => c.id == (event.toolResult?['id'] ?? ''));
+            final callIdx = calls.indexWhere((c) => c.id == (event.toolResult?['id'] ?? ''));
             if (callIdx != -1) {
               calls[callIdx] = calls[callIdx].copyWith(
                 result: event.toolResult?['content'] ?? '',
@@ -324,8 +288,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
             calls.add(ToolCall(
               id: event.approvalRequest?['id'] ?? '',
               name: event.approvalRequest?['name'] ?? '',
-              arguments: Map<String, dynamic>.from(
-                  event.approvalRequest?['arguments'] ?? {}),
+              arguments: Map<String, dynamic>.from(event.approvalRequest?['arguments'] ?? {}),
               status: ToolCallStatus.waitingApproval,
               dangerous: true,
             ));
@@ -335,20 +298,12 @@ class ChatNotifier extends StateNotifier<ChatState> {
             state = state.copyWith(isStreaming: false);
             return;
           case 'error':
-            msgs[lastIdx] =
-                msgs[lastIdx].copyWith(content: 'Error: ${event.content}');
-            state = state.copyWith(
-                isStreaming: false,
-                sessions: sessions
-                    .map((s) =>
-                        s.id == sessionId ? s.copyWith(messages: msgs) : s)
-                    .toList());
+            msgs[lastIdx] = msgs[lastIdx].copyWith(content: 'Error: ${event.content}');
+            state = state.copyWith(isStreaming: false, sessions: sessions.map((s) => s.id == sessionId ? s.copyWith(messages: msgs) : s).toList());
             return;
         }
         state = state.copyWith(
-          sessions: sessions
-              .map((s) => s.id == sessionId ? s.copyWith(messages: msgs) : s)
-              .toList(),
+          sessions: sessions.map((s) => s.id == sessionId ? s.copyWith(messages: msgs) : s).toList(),
         );
       }
     } catch (e) {
@@ -357,19 +312,15 @@ class ChatNotifier extends StateNotifier<ChatState> {
       if (idx != -1) {
         final msgs = List<ChatMessage>.from(sessions[idx].messages);
         final lastIdx = msgs.lastIndexWhere((m) => m.id == assistantMsg.id);
-        if (lastIdx != -1) {
-          msgs[lastIdx] = msgs[lastIdx].copyWith(content: 'Error: $e');
-        }
+        if (lastIdx != -1) msgs[lastIdx] = msgs[lastIdx].copyWith(content: 'Error: $e');
         state = state.copyWith(
-          sessions: sessions
-              .map((s) => s.id == sessionId ? s.copyWith(messages: msgs) : s)
-              .toList(),
+          sessions: sessions.map((s) => s.id == sessionId ? s.copyWith(messages: msgs) : s).toList(),
           isStreaming: false,
         );
       }
     }
   }
-
+  
   void stopStreaming() {
     state = state.copyWith(isStreaming: false);
   }
@@ -380,8 +331,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
     state = state.copyWith(
       sessions: state.sessions.map((s) {
         if (s.id != sessionId) return s;
-        return s.copyWith(
-            messages: s.messages.where((m) => m.id != messageId).toList());
+        return s.copyWith(messages: s.messages.where((m) => m.id != messageId).toList());
       }).toList(),
     );
   }
@@ -449,16 +399,13 @@ class ChatNotifier extends StateNotifier<ChatState> {
           );
         } else {
           // Run is still alive — it will send tool_result via SSE.
-          updated[cIdx] =
-              updated[cIdx].copyWith(status: ToolCallStatus.running);
+          updated[cIdx] = updated[cIdx].copyWith(status: ToolCallStatus.running);
         }
         msgs[i] = msgs[i].copyWith(toolCalls: updated);
         break;
       }
       state = state.copyWith(
-        sessions: sessions
-            .map((s) => s.id == sessionId ? s.copyWith(messages: msgs) : s)
-            .toList(),
+        sessions: sessions.map((s) => s.id == sessionId ? s.copyWith(messages: msgs) : s).toList(),
       );
     } catch (e) {
       state = state.copyWith(error: e.toString());
@@ -472,7 +419,7 @@ class ChatState {
   final bool isStreaming;
   final bool loading;
   final String? error;
-
+  
   const ChatState({
     this.sessions = const [],
     this.currentSessionId,
@@ -480,13 +427,8 @@ class ChatState {
     this.loading = false,
     this.error,
   });
-
-  ChatState copyWith(
-          {List<ChatSession>? sessions,
-          String? currentSessionId,
-          bool? isStreaming,
-          bool? loading,
-          String? error}) =>
+  
+  ChatState copyWith({List<ChatSession>? sessions, String? currentSessionId, bool? isStreaming, bool? loading, String? error}) =>
       ChatState(
         sessions: sessions ?? this.sessions,
         currentSessionId: currentSessionId ?? this.currentSessionId,
@@ -494,9 +436,8 @@ class ChatState {
         loading: loading ?? this.loading,
         error: error,
       );
-
-  ChatSession? get currentSession =>
-      sessions.where((s) => s.id == currentSessionId).firstOrNull;
+  
+  ChatSession? get currentSession => sessions.where((s) => s.id == currentSessionId).firstOrNull;
 }
 
 final chatProvider = StateNotifierProvider<ChatNotifier, ChatState>((ref) {

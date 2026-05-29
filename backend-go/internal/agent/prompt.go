@@ -38,14 +38,6 @@ func BuildSystemPrompt(reg *Registry, adb *runner.ADBRunner, agentStore *store.A
 	b.WriteString("- Memory: save and recall notes across sessions.\n\n")
 
 	b.WriteString("# Workflows\n")
-	b.WriteString("## Android reverse-engineering triage\n")
-	b.WriteString("When the user asks to analyze an APK broadly, assess security posture, or find the next reverse-engineering direction:\n")
-	b.WriteString("1. `apk_list` → identify the target `apk_id` and current decompiled state.\n")
-	b.WriteString("2. Run `apk_triage` first. It combines manifest, certificate, risk, attack surface, entry trace, packer, code, SDK, strings/config, anti-analysis, and hook suggestions.\n")
-	b.WriteString("3. If `apk_triage` says decompiled artifacts are missing, run `apk_decompile`, then rerun `apk_triage`.\n")
-	b.WriteString("4. Use the returned `next_steps` to decide the next narrow tool chain: `apk_attack_surface`, `apk_entry_trace`, `code_search`/`file_read`, `apk_callgraph`, `apk_reverse_plan`, `apk_generate_hooks`, `apk_runtime_plan`, `apk_reverse_validate`, `apk_evidence_package`, or Frida runtime tools.\n")
-	b.WriteString("5. Avoid broad manual grep/local_shell sweeps until the triage result shows what to focus on.\n\n")
-
 	b.WriteString("## Reverse engineering (code analysis)\n")
 	b.WriteString("1. `apk_list` → check if decompiled. If not, `apk_decompile`.\n")
 	b.WriteString("2. `code_search` with regex → locate classes/methods/strings.\n")
@@ -59,12 +51,10 @@ func BuildSystemPrompt(reg *Registry, adb *runner.ADBRunner, agentStore *store.A
 	b.WriteString("2. Use `local_shell` with r2 commands: `r2 -q -c \"iI\" <path>` (info), `is` (symbols), `ii` (imports), `iz` (strings), `afl` (functions).\n")
 	b.WriteString("3. Cross-reference JNI function names with Java native method declarations.\n\n")
 
-	b.WriteString("## Component, deeplink & attack-surface audit\n")
-	b.WriteString("When user asks about exported components, deeplinks, app links, content providers, or permissions:\n")
-	b.WriteString("1. Use `apk_attack_surface` first to enumerate exported activities/services/receivers/providers, deeplink URIs, content:// authorities, and suggested adb replay commands.\n")
-	b.WriteString("2. Use `apk_entry_trace` after decompile to map exported entry points to handler methods, external input reads, sink calls, method-local source→sink flows, and exact `path:line` evidence.\n")
-	b.WriteString("3. Use manifest/risk results for dangerous permissions, debuggable flags, backup, and cleartext traffic.\n")
-	b.WriteString("4. Use `code_search` + `file_read` to inspect handlers behind high-risk entry points before claiming exploitability.\n\n")
+	b.WriteString("## Component & permission audit\n")
+	b.WriteString("When user asks about app components or permissions:\n")
+	b.WriteString("1. Use `local_shell` with androguard: `androguard permissions -i <apk>`, `androguard activities -i <apk>`.\n")
+	b.WriteString("2. Flag dangerous permissions, exported components, debuggable flags.\n\n")
 
 	b.WriteString("## Network traffic analysis\n")
 	b.WriteString("When user wants to capture app traffic:\n")
@@ -76,10 +66,7 @@ func BuildSystemPrompt(reg *Registry, adb *runner.ADBRunner, agentStore *store.A
 	b.WriteString("When user wants runtime hooking:\n")
 	b.WriteString("1. `frida_server_status` → ensure frida-server is running on device.\n")
 	b.WriteString("2. `frida_list_apps` → find target package.\n")
-	b.WriteString("3. Use `apk_generate_hooks` after triage/entry_trace to get anti-detect, crypto, Firebase, and entry-trace source→sink monitor snippets.\n")
-	b.WriteString("4. Use `apk_runtime_plan` before touching a device when you need a replayable plan: it combines entry_trace flows, ADB replay commands, generated hooks, ready-to-run `frida_hook` args, and validation steps without executing anything.\n")
-	b.WriteString("5. `frida_hook`, `frida_spawn`, `device_shell`, or the generated Hooks panel runner can execute the selected JavaScript snippet/replay command explicitly.\n")
-	b.WriteString("6. After runtime_evidence is persisted, use `apk_evidence_package` to export Markdown/JSON artifacts containing static flow, replay command, hook, runtime output, and verified evidence.\n\n")
+	b.WriteString("3. `frida_hook` or `frida_spawn` with JavaScript snippet.\n\n")
 
 	// Environment
 	b.WriteString("# Environment\n")

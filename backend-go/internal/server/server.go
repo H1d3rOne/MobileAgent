@@ -81,7 +81,7 @@ func NewServer(cfg *config.Config, s *store.Store) (*Server, error) {
 	memoryHandler := handler.NewMemoryHandler(agentStore)
 	mcpHandler := handler.NewMCPHandler(mcpManager)
 	marketHandler := handler.NewMarketHandler(marketService)
-	fridaHandler := handler.NewFridaHandler(fridaRunner, apkStore)
+	fridaHandler := handler.NewFridaHandler(fridaRunner)
 
 	r := gin.New()
 	r.Use(gin.Recovery())
@@ -101,8 +101,8 @@ func NewServer(cfg *config.Config, s *store.Store) (*Server, error) {
 
 func (srv *Server) Start() error {
 	srv.httpSrv = &http.Server{
-		Addr:        srv.cfg.Addr(),
-		Handler:     srv.router,
+		Addr: srv.cfg.Addr(),
+		Handler: srv.router,
 		ReadTimeout: 30 * time.Second,
 	}
 

@@ -230,7 +230,7 @@ install_build_tools() {
   unzip -qo "$TMP_DIR/build-tools.zip" -d "$TMP_DIR/build-tools-extracted"
   local bt_dir
   bt_dir=$(find "$TMP_DIR/build-tools-extracted" -maxdepth 1 -type d | tail -1)
-  for tool in aapt aapt2 zipalign apksigner; do
+  for tool in aapt2 zipalign apksigner; do
     if [ -f "$bt_dir/$tool" ]; then
       cp "$bt_dir/$tool" "$BIN_DIR/$tool"
       chmod +x "$BIN_DIR/$tool"
