@@ -46,7 +46,7 @@ agent:
   # Approval mode for dangerous tool calls: "deny" (block all), "approval" (ask user), "yolo" (allow all)
   approval_mode: "approval"
   # Plan mode: "off" (ReAct single-loop), "auto" (four-stage only for multi-step tasks), "always" (force four-stage)
-  plan_mode: "off"
+  plan_mode: "always"
   max_replan_rounds: 2
   max_total_steps: 20
 
