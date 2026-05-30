@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/mobileagent/backend-go/internal/agent/extskill"
@@ -161,9 +162,6 @@ func (e *Engine) Run(ctx context.Context, sessionID, userMessage, selectedDevice
 		ExtManifests:         e.ExtManifests,
 	})
 
-	messages := []llm.Message{{Role: "system", Content: system}}
-	messages = append(messages, e.loadHistory(sessionID)...)
-
 	tools := e.Registry.AsLLMTools()
 	client := llm.NewClient(lc.BaseURL, lc.APIKey, lc.Model, lc.APIType)
 
@@ -174,11 +172,28 @@ func (e *Engine) Run(ctx context.Context, sessionID, userMessage, selectedDevice
 	}
 	e.approvalMu.Unlock()
 
+	planMode := e.Cfg.Agent.PlanMode
+	if planMode == "" {
+		planMode = "off"
+	}
+	if planMode != "off" {
+		return e.runPlanned(ctx, sessionID, userMessage, system, tools, client, emit)
+	}
+
+	messages := []llm.Message{{Role: "system", Content: system}}
+	messages = append(messages, e.loadHistory(sessionID)...)
+	_, err := e.runReAct(ctx, sessionID, system, messages, tools, client, 0, emit)
+	return err
+}
+
+// runReAct runs the LLM ↔ tool loop until the model stops calling tools or the
+// iteration budget is exhausted. `messages` is the full prompt (system + history
+// + any step framing already appended). It returns the final assistant text.
+func (e *Engine) runReAct(ctx context.Context, sessionID, system string, messages []llm.Message, tools []llm.Tool, client *llm.Client, stepIndex int, emit EventCallback) (string, error) {
 	maxIter := e.Cfg.Agent.MaxIterations
 	if maxIter <= 0 {
 		maxIter = 10
 	}
-
 	approvalMode := e.ApprovalMode
 	if approvalMode == "" {
 		approvalMode = "approval"
@@ -202,27 +217,23 @@ func (e *Engine) Run(ctx context.Context, sessionID, userMessage, selectedDevice
 		})
 		if err != nil {
 			emit("error", map[string]any{"content": err.Error()})
-			return err
+			return "", err
 		}
 
-		// Persist assistant message (text + tool_calls if any)
 		if asst.Content != "" || len(asst.ToolCalls) > 0 {
-			e.persistAssistant(sessionID, asst)
+			e.persistAssistantStep(sessionID, asst, stepIndex)
 		}
 
 		messages = append(messages, asst)
 
-		// No tool calls → done
 		if len(asst.ToolCalls) == 0 {
 			_ = finish
-			return nil
+			return asst.Content, nil
 		}
 
-		// Execute every tool call, append tool results to messages.
 		for _, tc := range asst.ToolCalls {
 			args := parseArgs(tc.Function.Arguments)
 
-			// Check approval for dangerous tools.
 			content, runErr := e.executeWithApproval(ctx, sessionID, tc, args, approvalMode, emit)
 			if runErr != nil && content == "" {
 				content = fmt.Sprintf("ERROR: %s", runErr.Error())
@@ -234,7 +245,7 @@ func (e *Engine) Run(ctx context.Context, sessionID, userMessage, selectedDevice
 				"content": content,
 				"error":   runErr != nil,
 			})
-			e.persistToolResult(sessionID, tc, content, runErr != nil)
+			e.persistToolResultStep(sessionID, tc, content, runErr != nil, stepIndex)
 			messages = append(messages, llm.Message{
 				Role:       "tool",
 				Content:    content,
@@ -245,7 +256,7 @@ func (e *Engine) Run(ctx context.Context, sessionID, userMessage, selectedDevice
 	}
 
 	emit("error", map[string]any{"content": fmt.Sprintf("max iterations (%d) reached without final answer", maxIter)})
-	return fmt.Errorf("max iterations reached")
+	return "", fmt.Errorf("max iterations reached")
 }
 
 // executeWithApproval checks if a tool is dangerous and handles approval flow
@@ -304,6 +315,168 @@ func (e *Engine) executeWithApproval(ctx context.Context, sessionID string, tc l
 	return e.Registry.Call(ctx, tc.Function.Name, args)
 }
 
+// runPlanned implements the four-stage loop: Plan → Step → conditional Replan
+// → FinalAnswer (with bounded loop-back to Plan).
+func (e *Engine) runPlanned(ctx context.Context, sessionID, userMessage, system string, tools []llm.Tool, client *llm.Client, emit EventCallback) error {
+	planMode := e.Cfg.Agent.PlanMode
+	maxReplanRounds := e.Cfg.Agent.MaxReplanRounds
+	if maxReplanRounds <= 0 {
+		maxReplanRounds = 2
+	}
+	maxTotalSteps := e.Cfg.Agent.MaxTotalSteps
+	if maxTotalSteps <= 0 {
+		maxTotalSteps = 20
+	}
+
+	skillNames := strings.Join(e.Registry.Names(), ", ")
+	history := e.loadHistory(sessionID)
+	var missing []string
+
+	for round := 0; round <= maxReplanRounds; round++ {
+		// ① Plan
+		plan, err := makePlan(ctx, client, system, userMessage, skillNames, missing)
+		if err != nil {
+			// Plan failed to produce valid JSON — fall back to plain ReAct.
+			emit("error", map[string]any{"content": "plan failed, falling back: " + err.Error()})
+			msgs := append([]llm.Message{{Role: "system", Content: system}}, history...)
+			_, rerr := e.runReAct(ctx, sessionID, system, msgs, tools, client, 0, emit)
+			return rerr
+		}
+		e.persistAction(sessionID, model.ActionPlan, mustJSON(plan), 0)
+		emit("plan", map[string]any{"goal": plan.Goal, "steps": plan.Steps})
+
+		// auto mode: trivial plans run as a single ReAct loop.
+		if planMode == "auto" && len(plan.Steps) <= 1 {
+			msgs := append([]llm.Message{{Role: "system", Content: system}}, history...)
+			_, rerr := e.runReAct(ctx, sessionID, system, msgs, tools, client, 0, emit)
+			return rerr
+		}
+
+		// ② Steps
+		cursor := 0
+		for cursor < len(plan.Steps) {
+			step := plan.Steps[cursor]
+			step.Status = "running"
+			plan.Steps[cursor] = step
+			e.persistAction(sessionID, model.ActionStepStart, step.Desc, cursor)
+			emit("step", map[string]any{"index": cursor, "total": len(plan.Steps), "desc": step.Desc, "status": "running"})
+
+			outcome := e.runStep(ctx, sessionID, system, plan, cursor, history, tools, client, emit)
+			plan.Steps[cursor].Status = outcome.Status
+			emit("step", map[string]any{"index": cursor, "total": len(plan.Steps), "desc": step.Desc, "status": outcome.Status})
+
+			// ③ Conditional Replan — only when the step deviated.
+			if outcome.Status != "ok" && outcome.Status != "done" {
+				decision, derr := makeReplan(ctx, client, system, plan, cursor, outcome)
+				if derr == nil {
+					e.persistAction(sessionID, model.ActionReplan, mustJSON(decision), cursor)
+					emit("replan", map[string]any{"reason": decision.Reason, "abort": decision.Abort, "new_steps": decision.NewSteps})
+					if decision.Abort {
+						break
+					}
+					plan.Steps = spliceSteps(plan.Steps, cursor, decision.NewSteps, maxTotalSteps)
+				}
+			}
+			cursor++
+		}
+
+		// ④ FinalAnswer
+		history = e.loadHistory(sessionID)
+		eval, ferr := makeFinalEval(ctx, client, system, userMessage, history)
+		if ferr != nil {
+			// Can't assess — treat as complete to avoid spinning.
+			return nil
+		}
+		e.persistAction(sessionID, model.ActionFinalAnswer, mustJSON(eval), 0)
+		emit("final", map[string]any{"complete": eval.Complete, "missing": eval.Missing, "replan": eval.Replan, "summary": eval.Summary})
+
+		if eval.Complete || !eval.Replan || round >= maxReplanRounds {
+			return nil
+		}
+		missing = eval.Missing // loop back to Plan
+	}
+	return nil
+}
+
+// runStep runs one step's ReAct sub-loop, then asks the LLM for a structured outcome.
+func (e *Engine) runStep(ctx context.Context, sessionID, system string, plan Plan, cursor int, history []llm.Message, tools []llm.Tool, client *llm.Client, emit EventCallback) StepOutcome {
+	step := plan.Steps[cursor]
+	planJSON, _ := json.Marshal(plan)
+	framing := fmt.Sprintf(
+		"Overall goal: %s\nFull plan: %s\nYou are now executing STEP %d: %s\nUse tools as needed. Focus only on this step.",
+		plan.Goal, planJSON, cursor, step.Desc,
+	)
+	msgs := append([]llm.Message{{Role: "system", Content: system}}, history...)
+	msgs = append(msgs, llm.Message{Role: "user", Content: framing})
+
+	if _, err := e.runReAct(ctx, sessionID, system, msgs, tools, client, cursor, emit); err != nil {
+		return StepOutcome{Status: "blocked", Note: err.Error()}
+	}
+
+	// Ask for a structured outcome (cheap, no tools). Refresh history so the
+	// model sees what the step actually did.
+	stepHist := e.loadHistory(sessionID)
+	return e.assessStep(ctx, client, system, step, stepHist)
+}
+
+// assessStep asks the LLM to classify how the just-finished step went.
+func (e *Engine) assessStep(ctx context.Context, client *llm.Client, system string, step PlanStep, history []llm.Message) StepOutcome {
+	prompt := fmt.Sprintf(
+		"You just finished step %d: %s\nClassify the outcome. Return ONLY JSON:\n"+
+			`{"status":"ok|deviated|blocked|new_finding","note":"<one line>"}`+
+			"\n- ok: step completed as planned\n- deviated: result differs from expectation, later steps may need adjustment\n"+
+			"- blocked: could not complete (tool failure, missing precondition)\n- new_finding: discovered something that warrants new/changed steps",
+		step.Index, step.Desc,
+	)
+	msgs := append([]llm.Message{{Role: "system", Content: system}}, history...)
+	msgs = append(msgs, llm.Message{Role: "user", Content: prompt})
+	out, err := completeJSON(ctx, client, msgs)
+	if err != nil {
+		return StepOutcome{Status: "ok", Note: "assess failed: " + err.Error()}
+	}
+	var o StepOutcome
+	if json.Unmarshal([]byte(out), &o) != nil || o.Status == "" {
+		return StepOutcome{Status: "ok"}
+	}
+	return o
+}
+
+// spliceSteps replaces all steps after `cursor` with newSteps, re-indexes, and
+// caps the total at maxTotal.
+func spliceSteps(steps []PlanStep, cursor int, newSteps []PlanStep, maxTotal int) []PlanStep {
+	kept := steps[:cursor+1]
+	combined := append(append([]PlanStep{}, kept...), newSteps...)
+	if len(combined) > maxTotal {
+		combined = combined[:maxTotal]
+	}
+	for i := range combined {
+		combined[i].Index = i
+		if combined[i].Status == "" {
+			combined[i].Status = "pending"
+		}
+	}
+	return combined
+}
+
+func mustJSON(v any) string {
+	b, _ := json.Marshal(v)
+	return string(b)
+}
+
+// persistAction records a generic typed action with a step index.
+func (e *Engine) persistAction(sessionID, actionType, content string, stepIndex int) {
+	if e.AgentStore == nil {
+		return
+	}
+	_ = e.AgentStore.CreateAction(&model.AgentAction{
+		ID:        util.NewID(),
+		SessionID: sessionID,
+		Type:      actionType,
+		Content:   content,
+		StepIndex: stepIndex,
+	})
+}
+
 // loadHistory rebuilds the LLM message list from persisted actions.
 func (e *Engine) loadHistory(sessionID string) []llm.Message {
 	actions, err := e.AgentStore.ListActions(sessionID)
@@ -347,6 +520,14 @@ func (e *Engine) loadHistory(sessionID string) []llm.Message {
 				ToolCallID: a.ToolCallID,
 				Name:       a.ToolName,
 			})
+		case model.ActionPlan:
+			msgs = append(msgs, llm.Message{Role: "assistant", Content: "[plan] " + a.Content})
+		case model.ActionStepStart:
+			msgs = append(msgs, llm.Message{Role: "assistant", Content: fmt.Sprintf("[step %d] %s", a.StepIndex, a.Content)})
+		case model.ActionReplan:
+			msgs = append(msgs, llm.Message{Role: "assistant", Content: "[replan] " + a.Content})
+		case model.ActionFinalAnswer:
+			msgs = append(msgs, llm.Message{Role: "assistant", Content: "[final] " + a.Content})
 		}
 	}
 	return msgs
@@ -374,14 +555,41 @@ func (e *Engine) persistAssistant(sessionID string, asst llm.Message) {
 }
 
 func (e *Engine) persistToolResult(sessionID string, tc llm.ToolCall, content string, isError bool) {
-	t := "tool_result"
+	e.persistToolResultStep(sessionID, tc, content, isError, 0)
+}
+
+func (e *Engine) persistAssistantStep(sessionID string, asst llm.Message, stepIndex int) {
+	if asst.Content != "" {
+		_ = e.AgentStore.CreateAction(&model.AgentAction{
+			ID:        util.NewID(),
+			SessionID: sessionID,
+			Type:      "assistant_message",
+			Content:   asst.Content,
+			StepIndex: stepIndex,
+		})
+	}
+	for _, tc := range asst.ToolCalls {
+		_ = e.AgentStore.CreateAction(&model.AgentAction{
+			ID:           util.NewID(),
+			SessionID:    sessionID,
+			Type:         "tool_call",
+			ToolCallID:   tc.ID,
+			ToolName:     tc.Function.Name,
+			ToolArgsJSON: tc.Function.Arguments,
+			StepIndex:    stepIndex,
+		})
+	}
+}
+
+func (e *Engine) persistToolResultStep(sessionID string, tc llm.ToolCall, content string, isError bool, stepIndex int) {
 	_ = e.AgentStore.CreateAction(&model.AgentAction{
 		ID:         util.NewID(),
 		SessionID:  sessionID,
-		Type:       t,
+		Type:       "tool_result",
 		ToolCallID: tc.ID,
 		ToolName:   tc.Function.Name,
 		Content:    content,
+		StepIndex:  stepIndex,
 	})
 	_ = isError
 }

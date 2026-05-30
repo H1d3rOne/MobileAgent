@@ -422,14 +422,23 @@ func (h *APKHandler) Build(c *gin.Context) {
 // Sign signs an APK file
 func (h *APKHandler) Sign(c *gin.Context) {
 	var req struct {
-		ApkPath string `json:"apk_path"`
+		ApkPath      string `json:"apk_path"`
+		KeystorePath string `json:"keystore_path"`
+		KeyAlias     string `json:"key_alias"`
+		StorePass    string `json:"store_pass"`
+		KeyPass      string `json:"key_pass"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, model.APIResponse{Success: false, Error: err.Error()})
 		return
 	}
 
-	result, err := h.runner.Sign(req.ApkPath)
+	result, err := h.runner.Sign(req.ApkPath, runner.SignOptions{
+		KeystorePath: req.KeystorePath,
+		KeyAlias:     req.KeyAlias,
+		StorePass:    req.StorePass,
+		KeyPass:      req.KeyPass,
+	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, model.APIResponse{Success: false, Error: err.Error()})
 		return

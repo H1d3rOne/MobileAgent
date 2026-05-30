@@ -60,6 +60,8 @@ type ToolsConfig struct {
 	Radare2        string `mapstructure:"radare2"`
 	Androguard     string `mapstructure:"androguard"`
 	UberApkSigner  string `mapstructure:"uber_apk_signer"`
+	APKSigner      string `mapstructure:"apksigner"`
+	Zipalign       string `mapstructure:"zipalign"`
 	Bundletool     string `mapstructure:"bundletool"`
 	Mitmproxy      string `mapstructure:"mitmproxy"`
 }
@@ -84,6 +86,9 @@ type AgentConfig struct {
 	HistoryMaxMessages int    `mapstructure:"history_max_messages"`
 	MemoryRecallTopK   int    `mapstructure:"memory_recall_top_k"`
 	ApprovalMode       string `mapstructure:"approval_mode"`
+	PlanMode           string `mapstructure:"plan_mode"` // off | auto | always
+	MaxReplanRounds    int    `mapstructure:"max_replan_rounds"`
+	MaxTotalSteps      int    `mapstructure:"max_total_steps"`
 }
 
 type SkillsConfig struct {

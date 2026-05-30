@@ -14,15 +14,30 @@ type AgentSession struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
+// AgentAction.Type values.
+const (
+	ActionUserMessage      = "user_message"
+	ActionAssistantMessage = "assistant_message"
+	ActionToolCall         = "tool_call"
+	ActionToolResult       = "tool_result"
+	ActionError            = "error"
+	ActionPendingApproval  = "pending_approval"
+	ActionPlan             = "plan"
+	ActionStepStart        = "step_start"
+	ActionReplan           = "replan"
+	ActionFinalAnswer      = "final_answer"
+)
+
 type AgentAction struct {
 	ID           string `json:"id" gorm:"primaryKey"`
 	SessionID    string `json:"session_id" gorm:"index"`
-	Type         string `json:"type"` // user_message | assistant_message | tool_call | tool_result | error
+	Type         string `json:"type"`
 	Content      string `json:"content,omitempty" gorm:"type:text"`
 	Result       string `json:"result,omitempty" gorm:"type:text"`
 	ToolCallID   string `json:"tool_call_id,omitempty" gorm:"index"`
 	ToolName     string `json:"tool_name,omitempty"`
 	ToolArgsJSON string `json:"tool_args,omitempty" gorm:"type:text"`
+	StepIndex    int    `json:"step_index,omitempty"`
 	TimestampModel
 }
 
