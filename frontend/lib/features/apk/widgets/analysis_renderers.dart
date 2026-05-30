@@ -17,6 +17,8 @@ Widget renderAnalyzer(
       return renderStrings(data, theme);
     case 'antidetect':
       return renderAntiDetect(data, theme);
+    case 'packer':
+      return renderPacker(data, theme);
     default:
       return Text('Unknown analyzer: $type',
           style: theme.textTheme.bodySmall);
@@ -689,6 +691,110 @@ Widget renderAntiDetect(Map<String, dynamic> data, ThemeData theme) {
           data['debug_detection'], summary['has_debug_detection']),
       detectionSection('Tamper Detection', Icons.security,
           data['tamper_detection'], summary['has_tamper_detection']),
+    ],
+  );
+}
+
+Widget renderPacker(Map<String, dynamic> data, ThemeData theme) {
+  final detected = (data['detected'] as List?) ?? const [];
+  final hasPacker = data['has_packer'] == true;
+  final dexCount = (data['dex_count'] as num?)?.toInt() ?? 0;
+  final multiDex = data['multi_dex'] == true;
+  final libs = (data['native_libs'] as List?)?.cast<String>() ?? const [];
+  final suggestions = (data['suggestions'] as List?)?.cast<String>() ?? const [];
+
+  Color confColor(String c) {
+    switch (c) {
+      case 'high': return theme.colorScheme.error;
+      case 'medium': return Colors.orange;
+      default: return Colors.amber.shade700;
+    }
+  }
+
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            color: (hasPacker ? theme.colorScheme.error : Colors.green)
+                .withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(hasPacker ? 'PACKED' : 'NO PACKER DETECTED',
+              style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: hasPacker ? theme.colorScheme.error : Colors.green)),
+        ),
+        const SizedBox(width: 12),
+        Text('$dexCount DEX${multiDex ? ' (multidex)' : ''}',
+            style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey)),
+      ]),
+      const SizedBox(height: 12),
+      if (detected.isEmpty)
+        Text('No known packer signatures matched.',
+            style: theme.textTheme.bodySmall)
+      else
+        ...detected.map((d) {
+          final m = (d as Map).cast<String, dynamic>();
+          final conf = (m['confidence'] ?? 'low').toString();
+          final evidence = (m['evidence'] as List?)?.cast<String>() ?? const [];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: confColor(conf).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                    child: Text(conf.toUpperCase(),
+                        style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: confColor(conf))),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text('${m['name']}  ·  ${m['vendor']}',
+                        style: theme.textTheme.bodyMedium
+                            ?.copyWith(fontWeight: FontWeight.w600)),
+                  ),
+                ]),
+                ...evidence.map((e) => Padding(
+                      padding: const EdgeInsets.only(left: 8, top: 2),
+                      child: SelectableText('• $e',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                              fontFamily: 'monospace', fontSize: 10)),
+                    )),
+              ],
+            ),
+          );
+        }),
+      if (libs.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        expandable('Native libraries (${libs.length})',
+            libs.map((l) => kv('', l, theme, mono: true)).toList(), theme),
+      ],
+      if (suggestions.isNotEmpty) ...[
+        const SizedBox(height: 12),
+        Text('Unpacking suggestions', style: theme.textTheme.titleSmall),
+        const SizedBox(height: 4),
+        ...suggestions.map((s) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Icon(Icons.lightbulb_outline, size: 14, color: Colors.amber),
+                const SizedBox(width: 6),
+                Expanded(child: Text(s, style: theme.textTheme.bodySmall)),
+              ]),
+            )),
+      ],
     ],
   );
 }

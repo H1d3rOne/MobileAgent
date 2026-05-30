@@ -24,6 +24,7 @@ const _analyzerTitles = {
   'sdk': 'Third-party SDKs',
   'strings': 'Strings & Config',
   'antidetect': 'Anti-Detection',
+  'packer': 'Packer / Unpacking',
 };
 
 class ApkPage extends ConsumerStatefulWidget {
@@ -467,6 +468,7 @@ class _ApkPageState extends ConsumerState<ApkPage>
           btn('sdk', 'SDKs', Icons.extension, disabled: !hasDecompile),
           btn('strings', 'Strings', Icons.text_fields, disabled: !hasDecompile),
           btn('antidetect', 'Protection', Icons.shield, disabled: !hasDecompile),
+          btn('packer', 'Packer', Icons.lock, disabled: !hasDecompile),
           MenuButton(
             icon: Icons.play_circle,
             label: 'Run All',

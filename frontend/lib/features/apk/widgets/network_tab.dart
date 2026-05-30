@@ -6,6 +6,45 @@ import 'package:file_picker/file_picker.dart';
 import '../../../core/services/api_service.dart';
 import 'result_panel.dart';
 
+// frida-based in-memory DEX dump: hooks the ART loader and writes every
+// loaded DEX image to the app's files dir, defeating most runtime packers.
+const _dexDumpScript = r'''
+Java.perform(function () {
+  function dumpRange(base, size, idx) {
+    try {
+      var dir = "/data/data/" + getPkg() + "/files";
+      var path = dir + "/dump_" + idx + "_" + size + ".dex";
+      var f = new File(path, "wb");
+      f.write(Memory.readByteArray(base, size));
+      f.flush(); f.close();
+      send("[dexdump] wrote " + path);
+    } catch (e) { send("[dexdump] write failed: " + e); }
+  }
+  function getPkg() {
+    var ctx = Java.use("android.app.ActivityThread").currentApplication().getApplicationContext();
+    return ctx.getPackageName();
+  }
+  // Hook DefineClass-time DEX images via libart OpenMemory / DexFile ctor.
+  var n = 0;
+  ["_ZN3art7DexFile10OpenMemoryEPKhmRKNSt3__112basic_stringIcNS3_11char_traitsIcEENS3_9allocatorIcEEEEjPNS_6MemMapEPKNS_10OatDexFileEPS9_",
+   "_ZN3art13DexFileLoader10OpenCommonEPKhmS2_mRKNSt3__112basic_stringIcNS4_11char_traitsIcEENS4_9allocatorIcEEEEjPKNS_10OatDexFileEbbPS9_PNS0_12VerifyResultE"]
+    .forEach(function (sym) {
+      var p = Module.findExportByName("libart.so", sym);
+      if (!p) return;
+      Interceptor.attach(p, {
+        onEnter: function (args) {
+          try {
+            var base = args[1];
+            var size = args[2].toInt32();
+            if (size > 0x20) dumpRange(base, size, n++);
+          } catch (e) {}
+        }
+      });
+    });
+  send("[dexdump] hooks installed (" + n + " sites) — exercise the app to trigger DEX loads");
+});
+''';
+
 class NetworkTab extends ConsumerStatefulWidget {
   const NetworkTab({super.key});
 
@@ -33,6 +72,7 @@ class _NetworkTabState extends ConsumerState<NetworkTab> {
   bool _scriptsLoading = false;
   bool _fridaRunning = false;
   String? _fridaRunOutput;
+  bool _dumping = false;
   final _serialController = TextEditingController();
   final _targetController = TextEditingController();
 
@@ -455,6 +495,39 @@ class _NetworkTabState extends ConsumerState<NetworkTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.tertiary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: theme.colorScheme.tertiary.withValues(alpha: 0.3)),
+            ),
+            child: Row(children: [
+              Icon(Icons.lock_open, size: 16, color: theme.colorScheme.tertiary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Unpack (DEX dump): hooks libart at runtime and writes in-memory DEX to the app files dir. Set serial + target below, then exercise the app.',
+                  style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.tonalIcon(
+                onPressed: (_dumping || _fridaRunning) ? null : _runDexDump,
+                icon: _dumping
+                    ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.lock_open, size: 14),
+                label: const Text('Unpack', style: TextStyle(fontSize: 12)),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+            ]),
+          ),
+        ),
         if (_categories != null && _categories!.isNotEmpty)
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
@@ -667,6 +740,28 @@ class _NetworkTabState extends ConsumerState<NetworkTab> {
       });
     } catch (e) {
       setState(() { _fridaRunning = false; _fridaRunOutput = 'Error: $e'; });
+    }
+  }
+
+  Future<void> _runDexDump() async {
+    final serial = _serialController.text.trim();
+    final target = _targetController.text.trim();
+    if (serial.isEmpty || target.isEmpty) {
+      setState(() => _fridaRunOutput = 'Error: device serial and target package are required');
+      return;
+    }
+    setState(() { _dumping = true; _fridaRunOutput = 'Spawning $target and dumping in-memory DEX (give the app a moment to unpack)...'; });
+    try {
+      final api = ref.read(apiServiceProvider);
+      final res = await api.runFridaCode(serial, target, _dexDumpScript, timeout: 60);
+      final output = res['output']?.toString() ?? '';
+      final error = res['error']?.toString();
+      setState(() {
+        _dumping = false;
+        _fridaRunOutput = error != null ? 'Error: $error\n$output' : output.isEmpty ? '(no output)' : output;
+      });
+    } catch (e) {
+      setState(() { _dumping = false; _fridaRunOutput = 'Error: $e'; });
     }
   }
 
