@@ -427,6 +427,12 @@ class ApiService {
         case 'error':
           yield ChatStreamEvent(type: 'error', content: json['content'] ?? json['error']);
           break;
+        case 'plan':
+        case 'step':
+        case 'replan':
+        case 'final':
+          yield ChatStreamEvent(type: eventType, data: Map<String, dynamic>.from(json));
+          break;
         default:
           yield ChatStreamEvent.fromJson(json);
       }
@@ -849,8 +855,9 @@ class ChatStreamEvent {
   final Map<String, dynamic>? toolCall;
   final Map<String, dynamic>? toolResult;
   final Map<String, dynamic>? approvalRequest;
+  final Map<String, dynamic>? data;
 
-  ChatStreamEvent({required this.type, this.content, this.toolCall, this.toolResult, this.approvalRequest});
+  ChatStreamEvent({required this.type, this.content, this.toolCall, this.toolResult, this.approvalRequest, this.data});
 
   factory ChatStreamEvent.fromJson(Map<String, dynamic> json) {
     return ChatStreamEvent(

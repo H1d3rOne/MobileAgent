@@ -28,6 +28,23 @@ class ToolCall {
 
 enum ToolCallStatus { pending, waitingApproval, running, completed, error }
 
+class PlanProgress {
+  final String goal;
+  final List<Map<String, dynamic>> steps; // {index, desc, status}
+  final String? replanReason;
+  final Map<String, dynamic>? finalEval; // {complete, missing, summary}
+
+  const PlanProgress({this.goal = '', this.steps = const [], this.replanReason, this.finalEval});
+
+  PlanProgress copyWith({String? goal, List<Map<String, dynamic>>? steps, String? replanReason, Map<String, dynamic>? finalEval}) =>
+      PlanProgress(
+        goal: goal ?? this.goal,
+        steps: steps ?? this.steps,
+        replanReason: replanReason ?? this.replanReason,
+        finalEval: finalEval ?? this.finalEval,
+      );
+}
+
 class ChatMessage {
   final String id;
   final MessageRole role;
@@ -35,7 +52,8 @@ class ChatMessage {
   final DateTime timestamp;
   final List<ToolCall>? toolCalls;
   final List<String>? attachments;
-  
+  final PlanProgress? plan;
+
   const ChatMessage({
     required this.id,
     required this.role,
@@ -43,12 +61,13 @@ class ChatMessage {
     required this.timestamp,
     this.toolCalls,
     this.attachments,
+    this.plan,
   });
-  
-  ChatMessage copyWith({String? content, List<ToolCall>? toolCalls}) => ChatMessage(
+
+  ChatMessage copyWith({String? content, List<ToolCall>? toolCalls, PlanProgress? plan}) => ChatMessage(
     id: id, role: role, content: content ?? this.content,
     timestamp: timestamp, toolCalls: toolCalls ?? this.toolCalls,
-    attachments: attachments,
+    attachments: attachments, plan: plan ?? this.plan,
   );
   
   factory ChatMessage.user(String content, {List<String>? attachments}) => ChatMessage(

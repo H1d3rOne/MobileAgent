@@ -395,6 +395,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (msg.plan != null)
+                      _buildPlanProgress(msg.plan!, theme),
                     if (msg.toolCalls != null && msg.toolCalls!.isNotEmpty)
                       ...msg.toolCalls!.map((tc) => _buildToolCallChip(tc, theme)),
                     if (msg.content.isNotEmpty)
@@ -460,6 +462,97 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       child: Padding(
         padding: const EdgeInsets.all(4),
         child: Icon(icon, size: 16, color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
+      ),
+    );
+  }
+
+  Widget _buildPlanProgress(PlanProgress plan, ThemeData theme) {
+    final fe = plan.finalEval;
+    final complete = fe?['complete'] == true;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.checklist, size: 14, color: theme.colorScheme.primary),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  plan.goal.isEmpty ? 'Plan' : plan.goal,
+                  style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ...plan.steps.map((s) => _buildStepRow(s, theme)),
+          if (plan.replanReason != null && plan.replanReason!.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Icon(Icons.alt_route, size: 13, color: Colors.orange),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text('Re-planned: ${plan.replanReason}',
+                      style: theme.textTheme.bodySmall?.copyWith(color: Colors.orange[800])),
+                ),
+              ],
+            ),
+          ],
+          if (fe != null) ...[
+            const Divider(height: 12),
+            Row(
+              children: [
+                Icon(complete ? Icons.task_alt : Icons.info_outline,
+                    size: 13, color: complete ? Colors.green : Colors.grey),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    (fe['summary']?.toString().isNotEmpty ?? false)
+                        ? fe['summary'].toString()
+                        : (complete ? 'Task complete' : 'Incomplete'),
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepRow(Map<String, dynamic> step, ThemeData theme) {
+    final status = step['status']?.toString() ?? 'pending';
+    final (icon, color) = switch (status) {
+      'running' => (Icons.sync, theme.colorScheme.primary),
+      'ok' || 'done' => (Icons.check_circle, Colors.green),
+      'blocked' => (Icons.block, Colors.red),
+      'deviated' || 'new_finding' => (Icons.alt_route, Colors.orange),
+      _ => (Icons.radio_button_unchecked, Colors.grey),
+    };
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(step['desc']?.toString() ?? '',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: status == 'pending' ? Colors.grey : null,
+                )),
+          ),
+        ],
       ),
     );
   }

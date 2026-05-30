@@ -294,6 +294,44 @@ class ChatNotifier extends StateNotifier<ChatState> {
             ));
             msgs[lastIdx] = msgs[lastIdx].copyWith(toolCalls: calls);
             break;
+          case 'plan':
+            final steps = ((event.data?['steps'] as List?) ?? [])
+                .map((s) => Map<String, dynamic>.from(s as Map))
+                .toList();
+            msgs[lastIdx] = msgs[lastIdx].copyWith(
+              plan: PlanProgress(goal: event.data?['goal']?.toString() ?? '', steps: steps),
+            );
+            break;
+          case 'step':
+            final cur = msgs[lastIdx].plan ?? const PlanProgress();
+            final idx = (event.data?['index'] as num?)?.toInt() ?? 0;
+            final steps = List<Map<String, dynamic>>.from(cur.steps);
+            while (steps.length <= idx) {
+              steps.add({'index': steps.length, 'desc': '', 'status': 'pending'});
+            }
+            steps[idx] = {
+              'index': idx,
+              'desc': event.data?['desc']?.toString() ?? steps[idx]['desc'] ?? '',
+              'status': event.data?['status']?.toString() ?? 'running',
+            };
+            msgs[lastIdx] = msgs[lastIdx].copyWith(plan: cur.copyWith(steps: steps));
+            break;
+          case 'replan':
+            final cur = msgs[lastIdx].plan ?? const PlanProgress();
+            msgs[lastIdx] = msgs[lastIdx].copyWith(
+              plan: cur.copyWith(replanReason: event.data?['reason']?.toString() ?? ''),
+            );
+            break;
+          case 'final':
+            final cur = msgs[lastIdx].plan ?? const PlanProgress();
+            msgs[lastIdx] = msgs[lastIdx].copyWith(
+              plan: cur.copyWith(finalEval: {
+                'complete': event.data?['complete'] == true,
+                'missing': (event.data?['missing'] as List?)?.map((e) => e.toString()).toList() ?? [],
+                'summary': event.data?['summary']?.toString() ?? '',
+              }),
+            );
+            break;
           case 'done':
             state = state.copyWith(isStreaming: false);
             return;
