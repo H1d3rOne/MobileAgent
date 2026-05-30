@@ -473,61 +473,81 @@ class _NetworkTabState extends ConsumerState<NetworkTab> {
   // ── Frida Scripts ──────────────────────────────────────────────────────────
 
   Widget _buildFrida(ThemeData theme) {
+    Widget unpackCard() {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.tertiary.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: theme.colorScheme.tertiary.withValues(alpha: 0.3)),
+          ),
+          child: Row(children: [
+            Icon(Icons.lock_open, size: 16, color: theme.colorScheme.tertiary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Unpack (DEX dump): hooks libart at runtime and writes in-memory DEX to the app files dir. Set serial + target below, then exercise the app.',
+                style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
+              ),
+            ),
+            const SizedBox(width: 8),
+            FilledButton.tonalIcon(
+              onPressed: (_dumping || _fridaRunning) ? null : _runDexDump,
+              icon: _dumping
+                  ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.lock_open, size: 14),
+              label: const Text('Unpack', style: TextStyle(fontSize: 12)),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          ]),
+        ),
+      );
+    }
+
     if (_scriptsLoading && _scripts == null) {
-      return const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        CircularProgressIndicator(), SizedBox(height: 12), Text('Loading Frida scripts...'),
-      ]));
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          unpackCard(),
+          const Divider(height: 1),
+          _buildDumpRunPanel(theme),
+          const Expanded(child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+            CircularProgressIndicator(), SizedBox(height: 12), Text('Loading Frida scripts...'),
+          ]))),
+        ],
+      );
     }
     if (_scripts == null || _scripts!.isEmpty) {
-      return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.code_off, size: 48, color: Colors.grey[400]),
-        const SizedBox(height: 12),
-        Text('No Frida scripts available', style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey)),
-        const SizedBox(height: 8),
-        FilledButton.tonalIcon(
-          onPressed: _scriptsLoading ? null : _loadScripts,
-          icon: const Icon(Icons.refresh, size: 14),
-          label: const Text('Reload'),
-        ),
-      ]));
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          unpackCard(),
+          const Divider(height: 1),
+          _buildDumpRunPanel(theme),
+          Expanded(child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.code_off, size: 48, color: Colors.grey[400]),
+            const SizedBox(height: 12),
+            Text('No Frida scripts available', style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey)),
+            const SizedBox(height: 8),
+            FilledButton.tonalIcon(
+              onPressed: _scriptsLoading ? null : _loadScripts,
+              icon: const Icon(Icons.refresh, size: 14),
+              label: const Text('Reload'),
+            ),
+          ]))),
+        ],
+      );
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-          child: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.tertiary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: theme.colorScheme.tertiary.withValues(alpha: 0.3)),
-            ),
-            child: Row(children: [
-              Icon(Icons.lock_open, size: 16, color: theme.colorScheme.tertiary),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Unpack (DEX dump): hooks libart at runtime and writes in-memory DEX to the app files dir. Set serial + target below, then exercise the app.',
-                  style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
-                ),
-              ),
-              const SizedBox(width: 8),
-              FilledButton.tonalIcon(
-                onPressed: (_dumping || _fridaRunning) ? null : _runDexDump,
-                icon: _dumping
-                    ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.lock_open, size: 14),
-                label: const Text('Unpack', style: TextStyle(fontSize: 12)),
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  visualDensity: VisualDensity.compact,
-                ),
-              ),
-            ]),
-          ),
-        ),
+        unpackCard(),
         if (_categories != null && _categories!.isNotEmpty)
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
@@ -616,6 +636,71 @@ class _NetworkTabState extends ConsumerState<NetworkTab> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildDumpRunPanel(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Expanded(child: TextField(
+            controller: _serialController,
+            decoration: const InputDecoration(
+              labelText: 'Device serial', hintText: 'emulator-5554', isDense: true,
+              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              border: OutlineInputBorder(),
+            ),
+            style: const TextStyle(fontSize: 12),
+          )),
+          const SizedBox(width: 8),
+          Expanded(child: TextField(
+            controller: _targetController,
+            decoration: const InputDecoration(
+              labelText: 'Target package', hintText: 'com.example.app', isDense: true,
+              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              border: OutlineInputBorder(),
+            ),
+            style: const TextStyle(fontSize: 12),
+          )),
+        ]),
+        if (_fridaRunOutput != null) ...[
+          const SizedBox(height: 8),
+          Container(
+            constraints: const BoxConstraints(maxHeight: 150),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(
+                color: _fridaRunOutput!.startsWith('Error')
+                    ? theme.colorScheme.error.withValues(alpha: 0.5)
+                    : theme.colorScheme.primary.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Stack(children: [
+              SingleChildScrollView(
+                padding: const EdgeInsets.all(8),
+                child: SelectableText(_fridaRunOutput!,
+                  style: TextStyle(fontSize: 11, fontFamily: 'monospace',
+                    color: _fridaRunOutput!.startsWith('Error') ? theme.colorScheme.error : null)),
+              ),
+              Positioned(top: 2, right: 2, child: IconButton(
+                icon: const Icon(Icons.copy, size: 12),
+                tooltip: 'Copy output',
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: _fridaRunOutput!));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Output copied'), duration: Duration(seconds: 1)));
+                },
+              )),
+            ]),
+          ),
+        ],
+      ]),
     );
   }
 
