@@ -5,6 +5,44 @@ import '../../../core/providers/apk_provider.dart';
 import '../../../core/services/api_service.dart';
 import 'result_panel.dart';
 
+String _shellQuote(String s) => "'${s.replaceAll("'", "'\\''")}'";
+
+final _toolsStatusProvider = FutureProvider<Map<String, bool>>((ref) async {
+  final list = await ref.watch(apiServiceProvider).toolsStatus();
+  return {
+    for (final t in list) (t['name'] ?? '').toString(): t['available'] == true,
+  };
+});
+
+class _ToolMissingBanner extends ConsumerWidget {
+  final String tool;
+  const _ToolMissingBanner({required this.tool});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final status = ref.watch(_toolsStatusProvider);
+    final missing = status.maybeWhen(
+      data: (m) => m.containsKey(tool) && m[tool] == false,
+      orElse: () => false,
+    );
+    if (!missing) return const SizedBox.shrink();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: Colors.orange.withValues(alpha: 0.12),
+      child: Row(children: [
+        const Icon(Icons.warning_amber, size: 16, color: Colors.orange),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text('$tool is not installed — these actions will fail. Configure tools.$tool in config.yaml or install it.',
+              style: theme.textTheme.bodySmall?.copyWith(color: Colors.orange[900])),
+        ),
+      ]),
+    );
+  }
+}
+
 class NativeTab extends ConsumerStatefulWidget {
   const NativeTab({super.key});
 
@@ -29,6 +67,7 @@ class _NativeTabState extends ConsumerState<NativeTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        const _ToolMissingBanner(tool: 'radare2'),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -100,7 +139,7 @@ class _NativeTabState extends ConsumerState<NativeTab> {
         'info': 'iI', 'symbols': 'is', 'imports': 'ii',
         'strings': 'iz', 'functions': 'afl',
       };
-      final res = await api.shellCommand('r2 -q -c "${cmdMap[action]}" "$filePath"');
+      final res = await api.shellCommand('r2 -q -c ${_shellQuote(cmdMap[action]!)} ${_shellQuote(filePath)}');
       setState(() { _result = res['output']?.toString() ?? 'No output'; _running = false; });
     } catch (e) {
       setState(() { _result = 'Error: $e'; _running = false; });
@@ -124,6 +163,7 @@ class _ComponentsTabState extends ConsumerState<ComponentsTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        const _ToolMissingBanner(tool: 'androguard'),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
           child: Wrap(spacing: 6, runSpacing: 6, children: [
@@ -166,13 +206,14 @@ class _ComponentsTabState extends ConsumerState<ComponentsTab> {
     setState(() { _running = true; _result = null; });
     try {
       final api = ref.read(apiServiceProvider);
+      final p = _shellQuote(apk.path);
       final cmdMap = {
-        'permissions': 'androguard permissions -i "${apk.path}"',
-        'activities': 'androguard activities -i "${apk.path}"',
-        'services': 'androguard services -i "${apk.path}"',
-        'receivers': 'androguard receivers -i "${apk.path}"',
-        'providers': 'androguard providers -i "${apk.path}"',
-        'manifest': 'androaxml -i "${apk.path}"',
+        'permissions': 'androguard permissions -i $p',
+        'activities': 'androguard activities -i $p',
+        'services': 'androguard services -i $p',
+        'receivers': 'androguard receivers -i $p',
+        'providers': 'androguard providers -i $p',
+        'manifest': 'androaxml -i $p',
       };
       final res = await api.shellCommand(cmdMap[action]!);
       setState(() { _result = res['output']?.toString() ?? 'No output'; _running = false; });

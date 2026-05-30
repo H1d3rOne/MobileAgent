@@ -38,6 +38,7 @@ class _ApkPageState extends ConsumerState<ApkPage>
       TabController(length: 8, vsync: this);
   String _decompileTool = 'apktool';
   String _analysisAction = 'manifest';
+  String? _lastSelectedPath;
   final _searchController = TextEditingController();
   String _searchQuery = '';
 
@@ -247,6 +248,15 @@ class _ApkPageState extends ConsumerState<ApkPage>
   }
 
   Widget _buildRightPanel(ApkState state, ThemeData theme) {
+    final selectedPath = state.selected?.path;
+    if (selectedPath != _lastSelectedPath) {
+      _lastSelectedPath = selectedPath;
+      if (_analysisAction == 'callgraph' || _analysisAction == 'diff') {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) setState(() => _analysisAction = 'manifest');
+        });
+      }
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

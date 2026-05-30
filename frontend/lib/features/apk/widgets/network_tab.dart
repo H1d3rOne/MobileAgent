@@ -164,22 +164,25 @@ class _NetworkTabState extends ConsumerState<NetworkTab> {
       setState(() => _proxyResult = 'Error: port is required');
       return;
     }
-    setState(() { _proxyRunning = true; _proxyResult = 'Starting mitmproxy on port $port...'; });
+    setState(() { _proxyResult = 'Starting mitmproxy on port $port...'; });
     try {
       final api = ref.read(apiServiceProvider);
-      final res = await api.shellCommand('mitmdump -p $port --set block_global=false &');
-      setState(() { _proxyResult = 'Proxy running on port $port\n${res['output'] ?? ''}'; });
+      final res = await api.shellCommand('nohup mitmdump -p $port --set block_global=false >/tmp/mitmdump-$port.log 2>&1 & echo started pid \$!');
+      setState(() {
+        _proxyRunning = true;
+        _proxyResult = 'Proxy running on port $port\n${res['output'] ?? ''}'.trimRight();
+      });
     } catch (e) {
       setState(() { _proxyResult = 'Error: $e'; _proxyRunning = false; });
     }
   }
 
   Future<void> _stopProxy() async {
-    setState(() { _proxyRunning = false; _proxyResult = 'Stopping...'; });
+    setState(() { _proxyResult = 'Stopping...'; });
     try {
       final api = ref.read(apiServiceProvider);
       await api.shellCommand('pkill -f mitmdump || true');
-      setState(() => _proxyResult = 'Proxy stopped.');
+      setState(() { _proxyRunning = false; _proxyResult = 'Proxy stopped.'; });
     } catch (e) {
       setState(() => _proxyResult = 'Stop error: $e');
     }
