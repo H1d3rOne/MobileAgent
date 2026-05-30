@@ -45,6 +45,10 @@ agent:
   memory_recall_top_k: 5
   # Approval mode for dangerous tool calls: "deny" (block all), "approval" (ask user), "yolo" (allow all)
   approval_mode: "approval"
+  # Plan mode: "off" (ReAct single-loop), "auto" (four-stage only for multi-step tasks), "always" (force four-stage)
+  plan_mode: "off"
+  max_replan_rounds: 2
+  max_total_steps: 20
 
 skills:
   shell_timeout_seconds: 30
