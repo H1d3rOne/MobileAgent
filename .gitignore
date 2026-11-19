@@ -61,3 +61,31 @@ backend-go/server
 backend-go/cyberagent
 backend-go/mobileagent
 backend-go/mobileagent-server
+
+# Prebuilt tool executables and generated symlinks
+bin/fastboot
+bin/rabin2
+bin/radiff2
+bin/rafind2
+bin/rahash2
+bin/rasm2
+bin/uber-apk-signer.jar
+bin/androguard
+bin/d2j-dex2jar
+bin/frida
+bin/frida-discover
+bin/frida-kill
+bin/frida-ls-devices
+bin/frida-ps
+bin/frida-trace
+bin/mitmdump
+bin/mitmproxy
+bin/mitmweb
+bin/objection
+frontend/linux/flutter/ephemeral/
+
+# Binary image assets (regenerate locally, e.g. flutter create)
+frontend/android/app/src/main/res/mipmap-*/
+frontend/macos/Runner/Assets.xcassets/AppIcon.appiconset/*.png
+frontend/web/favicon.png
+frontend/web/icons/*.png
