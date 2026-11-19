@@ -48,3 +48,6 @@ logs/
 tools/bin/
 tools/.venv/
 tools/.tmp/
+
+# Oversized prebuilt tool binaries (download locally instead)
+bin/jadx-lib/jadx-1.5.1-all.jar
