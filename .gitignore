@@ -49,5 +49,15 @@ tools/bin/
 tools/.venv/
 tools/.tmp/
 
-# Oversized prebuilt tool binaries (download locally instead)
+# Oversized prebuilt tool binaries (download/build locally instead)
 bin/jadx-lib/jadx-1.5.1-all.jar
+bin/frida-server-android-arm64
+bin/bundletool.jar
+bin/apktool.jar
+bin/adb
+bin/d2j-lib/
+bin/r2-lib/
+backend-go/server
+backend-go/cyberagent
+backend-go/mobileagent
+backend-go/mobileagent-server
